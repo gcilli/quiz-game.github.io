@@ -40,6 +40,17 @@ function disegnaGraficoAccuratezza() {
     const recentData = dataPoints;
     const recentSessions = sessionHistory;
 
+    // Verifica se ci sono dati validi da visualizzare
+    const hasValidData = recentData.some(d => d !== null && d !== undefined);
+    if (!hasValidData) {
+        const isDarkMode = document.body.classList.contains("dark-mode");
+        ctx.fillStyle = isDarkMode ? "#e0e0e0" : "#222";
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Nessun dato disponibile per questa categoria", canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
     // Colori adattivi per dark mode
     const isDarkMode = document.body.classList.contains("dark-mode");
     const lineColor = isDarkMode ? "#4a9eff" : "#007bff";
@@ -75,8 +86,11 @@ function disegnaGraficoAccuratezza() {
 
     let firstValidPoint = true;
     recentData.forEach((accuracy, i) => {
-        if (accuracy !== null) {
-            const x = padding + (chartWidth / (maxSessions - 1 || 1)) * i;
+        if (accuracy !== null && accuracy !== undefined) {
+            // Gestisce correttamente sia sessioni singole che multiple
+            const x = maxSessions === 1 
+                ? padding + chartWidth / 2 
+                : padding + (chartWidth / (maxSessions - 1)) * i;
             const y = padding + chartHeight - (accuracy / 100) * chartHeight;
 
             if (firstValidPoint) {
@@ -92,8 +106,11 @@ function disegnaGraficoAccuratezza() {
     // Disegna punti
     ctx.fillStyle = lineColor;
     recentData.forEach((accuracy, i) => {
-        if (accuracy !== null) {
-            const x = padding + (chartWidth / (maxSessions - 1 || 1)) * i;
+        if (accuracy !== null && accuracy !== undefined) {
+            // Gestisce correttamente sia sessioni singole che multiple
+            const x = maxSessions === 1 
+                ? padding + chartWidth / 2 
+                : padding + (chartWidth / (maxSessions - 1)) * i;
             const y = padding + chartHeight - (accuracy / 100) * chartHeight;
 
             ctx.beginPath();
@@ -129,11 +146,14 @@ function disegnaGraficoAccuratezza() {
     const step = Math.max(1, Math.ceil(maxSessions / maxLabels));
 
     recentData.forEach((accuracy, i) => {
-        const x = padding + (chartWidth / (maxSessions - 1 || 1)) * i;
+        // Gestisce correttamente sia sessioni singole che multiple
+        const x = maxSessions === 1 
+            ? padding + chartWidth / 2 
+            : padding + (chartWidth / (maxSessions - 1)) * i;
         const sessionNumber = sessionHistory.length - maxSessions + i + 1;
 
         // Mostra sempre la prima e l'ultima etichetta, più quelle a intervalli regolari
-        if (i === 0 || i === maxSessions - 1 || i % step === 0) {
+        if (maxSessions === 1 || i === 0 || i === maxSessions - 1 || i % step === 0) {
             ctx.fillText(`#${sessionNumber}`, x, canvas.height - padding + 20);
         }
     });
@@ -143,12 +163,6 @@ function disegnaGraficoAccuratezza() {
     ctx.font = "14px Arial";
     ctx.textAlign = "center";
     ctx.fillText("Sessione", canvas.width / 2, canvas.height - 10);
-
-    ctx.save();
-    ctx.translate(15, canvas.height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText("Accuratezza (%)", 0, 0);
-    ctx.restore();
 }
 
 function handleChartInteraction(clientX, clientY) {
@@ -333,16 +347,15 @@ function disegnaGraficoRisultati() {
         // Conteggi sopra barre
         ctx.font = "14px Arial";
         ctx.fillStyle = colorTesto;
+        ctx.textAlign = "center";
 
-        // numero corrette
+        // numero corrette - centrato sulla barra
         let textCorrette = conteggi[cat].corrette.toString();
-        let textWidthC = ctx.measureText(textCorrette).width;
-        ctx.fillText(textCorrette, x + larghezzaBarra / 2 - textWidthC / 2, canvas.height - altezzaCorrette - 35);
+        ctx.fillText(textCorrette, x + larghezzaBarra / 2, canvas.height - altezzaCorrette - 35);
 
-        // numero errate
+        // numero errate - centrato sulla barra
         let textErrate = conteggi[cat].errate.toString();
-        let textWidthE = ctx.measureText(textErrate).width;
-        ctx.fillText(textErrate, x + larghezzaBarra + larghezzaBarra / 2 - textWidthE / 2, canvas.height - altezzaErrate - 35);
+        ctx.fillText(textErrate, x + larghezzaBarra + larghezzaBarra / 2, canvas.height - altezzaErrate - 35);
     });
 
     // Asse Y
