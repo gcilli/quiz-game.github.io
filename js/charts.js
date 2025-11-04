@@ -194,12 +194,14 @@ function handleChartInteraction(clientX, clientY) {
         if (activeTooltip) {
             mostraTooltip(canvas, activeTooltip);
         }
+        return true; // Point was clicked
     } else {
         // Click fuori dai punti: nasconde il tooltip
         if (activeTooltip) {
             activeTooltip = null;
             disegnaGraficoAccuratezza();
         }
+        return false; // No point clicked
     }
 }
 
@@ -357,10 +359,14 @@ function initializeChartListeners() {
         handleChartInteraction(event.clientX, event.clientY);
     });
 
-    // Event listener per touch (mobile) - non passivo per iOS compatibility
+    // Event listener per touch (mobile) - solo previene default se si tocca un punto
     document.getElementById("accuracy-chart").addEventListener("touchstart", (event) => {
-        event.preventDefault();
         const touch = event.touches[0];
-        handleChartInteraction(touch.clientX, touch.clientY);
+        const pointClicked = handleChartInteraction(touch.clientX, touch.clientY);
+        
+        // Previeni lo scroll solo se hai toccato un punto del grafico
+        if (pointClicked && event.cancelable) {
+            event.preventDefault();
+        }
     }, { passive: false });
 }
