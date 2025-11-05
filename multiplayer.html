@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Multiplayer</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Home Screen -->
+        <div id="homeScreen" class="screen active">
+            <div class="header-container">
+                <h1>🎮 Quiz Multiplayer</h1>
+                <div class="dark-mode-toggle-wrapper">
+                    <label style="position: relative; cursor: pointer;">
+                        <input type="checkbox" id="dark-mode-checkbox" class="dark-mode-checkbox">
+                        <div class="toggle-switch">
+                            <span class="toggle-icon sun-icon">☀️</span>
+                            <span class="toggle-icon moon-icon">🌙</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <p style="color: var(--text-color);">Sfida i tuoi amici in tempo reale!</p>
+            
+            <div class="button-group">
+                <button id="createRoomBtn" class="btn btn-primary">Crea Stanza</button>
+                <button id="joinRoomBtn" class="btn btn-secondary">Unisciti</button>
+                <button id="backToMainBtn" class="btn btn-tertiary">← Menù</button>
+            </div>
+        </div>
+
+        <!-- Create Room Screen -->
+        <div id="createRoomScreen" class="screen">
+            <h2>Crea una Stanza</h2>
+            
+            <form id="createRoomForm">
+                <div class="form-group">
+                    <label for="hostName">Il tuo nome:</label>
+                    <input type="text" id="hostName" maxlength="20" required placeholder="Inserisci il tuo nome">
+                </div>
+                
+                <div class="form-group">
+                    <label for="numQuestions">Numero di domande:</label>
+                    <select id="numQuestions" required>
+                        <option value="5">5 domande</option>
+                        <option value="10" selected>10 domande</option>
+                        <option value="15">15 domande</option>
+                        <option value="20">20 domande</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="timerSetting">Tempo per domanda:</label>
+                    <select id="timerSetting" required>
+                        <option value="15">15 secondi</option>
+                        <option value="30" selected>30 secondi</option>
+                        <option value="45">45 secondi</option>
+                        <option value="60">60 secondi</option>
+                    </select>
+                </div>
+                
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">Crea Stanza</button>
+                    <button type="button" id="cancelCreateBtn" class="btn btn-tertiary">Annulla</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Join Room Screen -->
+        <div id="joinRoomScreen" class="screen">
+            <h2>Unisciti a una Stanza</h2>
+            
+            <form id="joinRoomForm">
+                <div class="form-group">
+                    <label for="playerName">Il tuo nome:</label>
+                    <input type="text" id="playerName" maxlength="20" required placeholder="Inserisci il tuo nome">
+                </div>
+                
+                <div class="form-group">
+                    <label for="roomCodeInput">Codice stanza:</label>
+                    <input type="text" id="roomCodeInput" maxlength="6" required placeholder="Es: ABC123" style="text-transform: uppercase;">
+                </div>
+                
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">Unisciti</button>
+                    <button type="button" id="cancelJoinBtn" class="btn btn-tertiary">Annulla</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lobby Screen -->
+        <div id="lobbyScreen" class="screen">
+            <h2>Stanza: <span id="roomCodeDisplay"></span></h2>
+            
+            <div id="lobbySettings" class="lobby-settings">
+                <p><strong>Domande:</strong> <span id="lobbyNumQuestions"></span></p>
+                <p><strong>Tempo:</strong> <span id="lobbyTimer"></span> secondi</p>
+            </div>
+            
+            <h3 style="color: var(--text-color);">Giocatori (<span id="playerCount">0</span>):</h3>
+            <div id="playersList" class="players-list"></div>
+            
+            <div class="button-group">
+                <button id="startGameBtn" class="btn btn-primary" style="display: none;">Inizia Partita</button>
+                <button id="leaveLobbyBtn" class="btn btn-tertiary">Esci</button>
+            </div>
+            
+            <div id="waitingMessage" class="info-message" style="display: none;">
+                In attesa che l'host avvii la partita...
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+            <div class="game-header">
+                <div class="question-counter">
+                    Domanda <span id="currentQuestionNum">1</span> di <span id="totalQuestions">10</span>
+                </div>
+                <div id="gameTimer" class="timer">30</div>
+            </div>
+            
+            <div id="gameQuestion" class="question"></div>
+            <div id="gameAnswers" class="answers"></div>
+            
+            <div id="answerFeedback" class="answer-feedback" style="display: none;">
+                <p id="feedbackText"></p>
+                <p id="feedbackPoints"></p>
+            </div>
+            
+            <div class="mini-leaderboard">
+                <h4>Classifica</h4>
+                <div id="miniLeaderboard"></div>
+            </div>
+            
+            <div id="waitingForPlayers" class="info-message" style="display: none;">
+                In attesa degli altri giocatori...
+            </div>
+            
+            <button id="nextQuestionBtn" class="btn btn-primary" style="display: none;">Prossima Domanda</button>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="screen">
+            <h2>🏆 Risultati Finali</h2>
+            
+            <div id="finalLeaderboard" class="final-leaderboard"></div>
+            
+            <div class="button-group">
+                <button id="playAgainBtn" class="btn btn-primary" style="display: none;">Gioca Ancora</button>
+                <button id="backToHomeBtn" class="btn btn-secondary">Torna al Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Application Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/multiplayer.js"></script>
+    
+    <script>
+        // Load questions data
+        let domande = {};
+        
+        // Game instance
+        let game = null;
+        let timerInterval = null;
+        let timeRemaining = 30;
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Load questions
+            try {
+                const response = await fetch('data/questions.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                domande = await response.json();
+                window.domande = domande;
+                console.log('Questions loaded successfully:', Object.keys(domande).length, 'categories');
+            } catch (error) {
+                console.error('Error loading questions:', error);
+                alert('Errore nel caricamento delle domande. Dettagli nella console (F12).\nAssicurati di aprire il file tramite un server locale (non file://)');
+                return;
+            }
+
+            // Initialize Firebase
+            if (!initializeFirebase()) {
+                alert('Impossibile connettersi a Firebase. Controlla la configurazione.');
+                return;
+            }
+
+            // Setup dark mode
+            setupDarkMode();
+
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Show home screen
+            showScreen('homeScreen');
+        });
+
+        function setupDarkMode() {
+            const darkModeCheckbox = document.getElementById("dark-mode-checkbox");
+            const body = document.body;
+
+            // Load saved dark mode preference
+            const savedDarkMode = SafeStorage.get("darkMode");
+            if (savedDarkMode) {
+                body.classList.add("dark-mode");
+                darkModeCheckbox.checked = true;
+            }
+
+            // Toggle dark mode on checkbox change
+            darkModeCheckbox.addEventListener("change", () => {
+                body.classList.toggle("dark-mode");
+                const isDarkMode = body.classList.contains("dark-mode");
+                SafeStorage.set("darkMode", isDarkMode);
+            });
+        }
+
+        function setupEventListeners() {
+            // Home screen
+            document.getElementById('createRoomBtn').addEventListener('click', () => {
+                showScreen('createRoomScreen');
+            });
+            
+            document.getElementById('joinRoomBtn').addEventListener('click', () => {
+                showScreen('joinRoomScreen');
+            });
+            
+            document.getElementById('backToMainBtn').addEventListener('click', () => {
+                window.location.href = 'index.html';
+            });
+
+            // Create room
+            document.getElementById('createRoomForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await createRoom();
+            });
+            
+            document.getElementById('cancelCreateBtn').addEventListener('click', () => {
+                showScreen('homeScreen');
+            });
+
+            // Join room
+            document.getElementById('joinRoomForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await joinRoom();
+            });
+            
+            document.getElementById('cancelJoinBtn').addEventListener('click', () => {
+                showScreen('homeScreen');
+            });
+
+            // Lobby
+            document.getElementById('startGameBtn').addEventListener('click', async () => {
+                try {
+                    await game.startGame();
+                } catch (error) {
+                    alert(error.message);
+                }
+            });
+            
+            document.getElementById('leaveLobbyBtn').addEventListener('click', () => {
+                if (game) {
+                    game.cleanup();
+                    game = null;
+                }
+                showScreen('homeScreen');
+            });
+
+            // Game
+            document.getElementById('nextQuestionBtn').addEventListener('click', async () => {
+                await game.nextQuestion();
+                document.getElementById('nextQuestionBtn').style.display = 'none';
+            });
+
+            // Results
+            document.getElementById('playAgainBtn').addEventListener('click', async () => {
+                try {
+                    await game.replayGame();
+                    showScreen('lobbyScreen');
+                } catch (error) {
+                    alert(error.message);
+                }
+            });
+
+            document.getElementById('backToHomeBtn').addEventListener('click', () => {
+                if (game) {
+                    game.cleanup();
+                    game = null;
+                }
+                showScreen('homeScreen');
+            });
+        }
+
+        async function createRoom() {
+            const hostName = document.getElementById('hostName').value.trim();
+            const numQuestions = parseInt(document.getElementById('numQuestions').value);
+            const timer = parseInt(document.getElementById('timerSetting').value);
+
+            if (!hostName) {
+                alert('Inserisci il tuo nome');
+                return;
+            }
+
+            try {
+                game = new MultiplayerQuiz();
+                game.init();
+                
+                const roomCode = await game.createRoom(hostName, numQuestions, timer);
+                
+                // Check if we got fewer questions than requested
+                const actualQuestions = game.questions.length;
+                if (actualQuestions < numQuestions) {
+                    alert(`Attenzione: Hai richiesto ${numQuestions} domande ma sono disponibili solo ${actualQuestions} domande nel database.`);
+                }
+                
+                // Show lobby
+                document.getElementById('roomCodeDisplay').textContent = roomCode;
+                document.getElementById('lobbyNumQuestions').textContent = actualQuestions;
+                document.getElementById('lobbyTimer').textContent = timer;
+                document.getElementById('totalQuestions').textContent = actualQuestions;
+                document.getElementById('startGameBtn').style.display = 'block';
+                document.getElementById('waitingMessage').style.display = 'none';
+                
+                showScreen('lobbyScreen');
+            } catch (error) {
+                alert('Errore nella creazione della stanza: ' + error.message);
+            }
+        }
+
+        async function joinRoom() {
+            const playerName = document.getElementById('playerName').value.trim();
+            const roomCode = document.getElementById('roomCodeInput').value.trim();
+
+            if (!playerName || !roomCode) {
+                alert('Inserisci nome e codice stanza');
+                return;
+            }
+
+            try {
+                game = new MultiplayerQuiz();
+                game.init();
+                
+                await game.joinRoom(roomCode, playerName);
+                
+                // Show lobby
+                document.getElementById('roomCodeDisplay').textContent = roomCode;
+                document.getElementById('lobbyNumQuestions').textContent = game.numQuestions || game.questions.length;
+                document.getElementById('lobbyTimer').textContent = game.timerDuration;
+                document.getElementById('totalQuestions').textContent = game.numQuestions || game.questions.length;
+                document.getElementById('startGameBtn').style.display = 'none';
+                document.getElementById('waitingMessage').style.display = 'block';
+                
+                showScreen('lobbyScreen');
+            } catch (error) {
+                alert('Errore: ' + error.message);
+            }
+        }
+
+        // Callback functions for multiplayer events
+        window.updatePlayersList = function(players) {
+            const playersList = document.getElementById('playersList');
+            const playerCount = document.getElementById('playerCount');
+            
+            const playerArray = Object.entries(players).map(([id, data]) => ({
+                id,
+                ...data
+            }));
+            
+            playerCount.textContent = playerArray.length;
+            
+            playersList.innerHTML = playerArray.map(player => {
+                const isHost = player.id === game.hostId;
+                const hostBadge = isHost ? ' 👑' : '';
+                return `<div class="player-item">${player.name}${hostBadge}</div>`;
+            }).join('');
+        };
+
+        window.onGameStart = function() {
+            // Set up listener for first question (question 0)
+            game.setupAnswersListener(0);
+            showScreen('gameScreen');
+            displayQuestion();
+            startTimer();
+        };
+        
+        window.onGameRestart = function() {
+            // Game was restarted, go back to lobby
+            showScreen('lobbyScreen');
+        };
+
+        window.onNewQuestion = function(question, index) {
+            document.getElementById('currentQuestionNum').textContent = index + 1;
+            displayQuestion();
+            document.getElementById('answerFeedback').style.display = 'none';
+            document.getElementById('waitingForPlayers').style.display = 'none';
+            document.getElementById('nextQuestionBtn').style.display = 'none';
+            game.hasAnswered = false;
+            startTimer();
+        };
+
+        window.updateScores = function(scores) {
+            const leaderboard = game.getLeaderboard();
+            updateMiniLeaderboard(leaderboard);
+        };
+
+        window.updateQuestionCount = function(count) {
+            document.getElementById('lobbyNumQuestions').textContent = count;
+            document.getElementById('totalQuestions').textContent = count;
+        };
+
+        window.updateAnswersStatus = function(answers) {
+            // Check if all players have answered
+            const totalPlayers = Object.keys(game.players).length;
+            const answeredPlayers = Object.keys(answers || {}).length;
+            
+            console.log('Total players:', totalPlayers, 'Answered:', answeredPlayers, 'Is host:', game.isHost);
+            
+            if (game.isHost && answeredPlayers === totalPlayers) {
+                // All players have answered, show next button
+                console.log('All players answered! Showing next button');
+                document.getElementById('nextQuestionBtn').style.display = 'block';
+                document.getElementById('waitingForPlayers').style.display = 'none';
+            }
+        };
+
+        window.onGameEnd = function() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            showResults();
+        };
+
+        function displayQuestion() {
+            const question = game.questions[game.currentQuestionIndex];
+            document.getElementById('gameQuestion').textContent = question.domanda;
+            
+            const answersContainer = document.getElementById('gameAnswers');
+            answersContainer.innerHTML = question.risposte.map((risposta, index) => 
+                `<button data-index="${index}">${risposta}</button>`
+            ).join('');
+            
+            // Add click handlers
+            answersContainer.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => handleAnswer(parseInt(btn.dataset.index)));
+            });
+        }
+
+        async function handleAnswer(answerIndex) {
+            if (game.hasAnswered) return;
+            
+            const question = game.questions[game.currentQuestionIndex];
+            const correctIndex = question.rispostaCorretta;
+            
+            try {
+                const result = await game.submitAnswer(answerIndex);
+                
+                // Show correct/wrong on buttons
+                const buttons = document.querySelectorAll('#gameAnswers button');
+                buttons.forEach((btn, index) => {
+                    btn.disabled = true;
+                    if (index === correctIndex) {
+                        btn.classList.add('correct');
+                    } else if (index === answerIndex && !result.isCorrect) {
+                        btn.classList.add('wrong');
+                    }
+                });
+                
+                // Show feedback
+                const feedbackEl = document.getElementById('answerFeedback');
+                const feedbackText = document.getElementById('feedbackText');
+                const feedbackPoints = document.getElementById('feedbackPoints');
+                
+                if (result.isCorrect) {
+                    feedbackText.textContent = '✓ Risposta corretta!';
+                    feedbackText.style.color = '#4CAF50';
+                } else {
+                    feedbackText.textContent = '✗ Risposta errata';
+                    feedbackText.style.color = '#f44336';
+                }
+                
+                feedbackPoints.textContent = `${result.points > 0 ? '+' : ''}${result.points} punti (${result.timeElapsed.toFixed(1)}s)`;
+                feedbackEl.style.display = 'block';
+                
+                // Show waiting message (next button will appear when all players answered)
+                document.getElementById('waitingForPlayers').style.display = 'block';
+                
+                // Stop timer
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
+                
+                // Check if we need to hide waiting message (for host when all answered)
+                // This will be updated by the Firebase listener, but we'll double-check
+                setTimeout(() => {
+                    const nextBtn = document.getElementById('nextQuestionBtn');
+                    if (nextBtn.style.display === 'block') {
+                        document.getElementById('waitingForPlayers').style.display = 'none';
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Error submitting answer:', error);
+            }
+        }
+
+        function startTimer() {
+            timeRemaining = game.timerDuration;
+            const timerEl = document.getElementById('gameTimer');
+            timerEl.textContent = timeRemaining;
+            
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                timerEl.textContent = timeRemaining;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    if (!game.hasAnswered) {
+                        // Time's up - show correct answer and auto-submit
+                        const question = game.questions[game.currentQuestionIndex];
+                        const correctIndex = question.rispostaCorretta;
+                        
+                        const buttons = document.querySelectorAll('#gameAnswers button');
+                        buttons.forEach((btn, index) => {
+                            btn.disabled = true;
+                            if (index === correctIndex) {
+                                btn.classList.add('correct');
+                            }
+                        });
+                        
+                        handleAnswer(-1);
+                    }
+                }
+            }, 1000);
+        }
+
+        function updateMiniLeaderboard(leaderboard) {
+            const miniLeaderboard = document.getElementById('miniLeaderboard');
+            miniLeaderboard.innerHTML = leaderboard.slice(0, 5).map((player, index) => 
+                `<div class="leaderboard-item">
+                    <span>${index + 1}. ${player.name}</span>
+                    <span>${player.score}</span>
+                </div>`
+            ).join('');
+        }
+
+        function showResults() {
+            const leaderboard = game.getLeaderboard();
+            const finalLeaderboard = document.getElementById('finalLeaderboard');
+            
+            finalLeaderboard.innerHTML = leaderboard.map((player, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                return `<div class="final-leaderboard-item ${index < 3 ? 'podium' : ''}">
+                    <span class="rank">${index + 1}</span>
+                    <span class="player-name">${medal} ${player.name}</span>
+                    <span class="player-score">${player.score}</span>
+                </div>`;
+            }).join('');
+            
+            // Show "Play Again" button only for host
+            const playAgainBtn = document.getElementById('playAgainBtn');
+            if (game.isHost) {
+                playAgainBtn.style.display = 'block';
+            } else {
+                playAgainBtn.style.display = 'none';
+            }
+            
+            showScreen('resultsScreen');
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (game) {
+                game.cleanup();
+            }
+        });
+    </script>
+</body>
+</html>

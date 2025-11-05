@@ -543,6 +543,14 @@ function initializeEventListeners() {
 
         avviaQuiz();
     });
+
+    // Multiplayer button
+    const multiplayerBtn = document.getElementById("multiplayer-btn");
+    if (multiplayerBtn) {
+        multiplayerBtn.addEventListener("click", () => {
+            window.location.href = "multiplayer.html";
+        });
+    }
 }
 
 // Initialize app
