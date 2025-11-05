@@ -71,6 +71,7 @@ class MultiplayerQuiz {
         currentQuestion: 0,
         numQuestions: numQuestions,
         timer: timer,
+        questionsVersion: 0, // Track when questions change
         players: {
           [this.playerId]: {
             name: playerName,
@@ -157,18 +158,26 @@ class MultiplayerQuiz {
     });
     this.listeners.push({ ref: playersRef, event: 'value', callback: playersListener });
 
-    // Listen for questions array changes (when host updates)
-    const questionsRef = this.roomRef.child('questions');
-    const questionsListener = questionsRef.on('value', (snapshot) => {
-      const questions = snapshot.val();
-      if (questions) {
-        this.questions = questions;
-        if (window.updateQuestionCount) {
-          window.updateQuestionCount(questions.length);
-        }
+    // Listen for numQuestions changes (lightweight - only a number, not full array)
+    const numQuestionsRef = this.roomRef.child('numQuestions');
+    const numQuestionsListener = numQuestionsRef.on('value', (snapshot) => {
+      const count = snapshot.val();
+      if (count && window.updateQuestionCount) {
+        window.updateQuestionCount(count);
       }
     });
-    this.listeners.push({ ref: questionsRef, event: 'value', callback: questionsListener });
+    this.listeners.push({ ref: numQuestionsRef, event: 'value', callback: numQuestionsListener });
+
+    // Listen for questions version changes (triggers reload only when needed)
+    const questionsVersionRef = this.roomRef.child('questionsVersion');
+    const questionsVersionListener = questionsVersionRef.on('value', (snapshot) => {
+      const version = snapshot.val();
+      // Only reload if we're not the host (host already has the new questions)
+      if (version !== null && version > 0 && !this.isHost) {
+        this.fetchQuestions();
+      }
+    });
+    this.listeners.push({ ref: questionsVersionRef, event: 'value', callback: questionsVersionListener });
 
     // Listen for game start
     const gameStartedRef = this.roomRef.child('gameStarted');
@@ -460,7 +469,7 @@ class MultiplayerQuiz {
       gameStarted: false,
       gameEnded: false,
       currentQuestion: 0,
-      questions: newQuestions,
+      questions: newQuestions, // Still need to update for new joiners
       answers: null, // Clear all previous answers
       questionStartTime: null
     };
@@ -477,6 +486,28 @@ class MultiplayerQuiz {
     this.currentQuestionIndex = 0;
     this.gameStarted = false;
     this.hasAnswered = false;
+    
+    // Notify other players to reload questions
+    this.notifyQuestionsChanged();
+  }
+
+  // Notify players that questions have changed (for optimization)
+  async notifyQuestionsChanged() {
+    // Increment a counter to trigger non-host players to reload questions
+    const questionsVersionRef = this.roomRef.child('questionsVersion');
+    const snapshot = await questionsVersionRef.once('value');
+    const currentVersion = snapshot.val() || 0;
+    await questionsVersionRef.set(currentVersion + 1);
+  }
+
+  // Fetch questions from Firebase (called when questionsVersion changes)
+  async fetchQuestions() {
+    const snapshot = await this.roomRef.child('questions').once('value');
+    const questions = snapshot.val();
+    if (questions) {
+      this.questions = questions;
+      console.log('Questions reloaded from Firebase:', questions.length);
+    }
   }
 }
 
