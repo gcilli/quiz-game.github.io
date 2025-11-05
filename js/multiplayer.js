@@ -532,6 +532,8 @@ class MultiplayerUI {
     this.timerInterval = null;
     this.timeRemaining = 30;
     this.domande = {};
+    this.previousScores = {}; // Track previous scores to show differences
+    this.allPlayersAnswered = false; // Track if all players answered current question
   }
 
   async init() {
@@ -687,10 +689,19 @@ class MultiplayerUI {
     };
 
     window.onGameStart = () => {
+      // Initialize previous scores (all should be 0 at game start)
+      this.previousScores = { ...this.game.scores };
+      this.allPlayersAnswered = false;
+      
       // Set up listener for first question (question 0)
       this.game.setupAnswersListener(0);
       this.showScreen('gameScreen');
       this.displayQuestion();
+      
+      // Initialize leaderboard with current scores (no diff yet)
+      const leaderboard = this.game.getLeaderboard();
+      this.updateMiniLeaderboard(leaderboard);
+      
       this.startTimer();
     };
 
@@ -700,6 +711,10 @@ class MultiplayerUI {
     };
 
     window.onNewQuestion = (question, index) => {
+      // Save current scores before new question starts
+      this.previousScores = { ...this.game.scores };
+      this.allPlayersAnswered = false; // Reset flag for new question
+      
       document.getElementById('currentQuestionNum').textContent = index + 1;
       this.displayQuestion();
       document.getElementById('answerFeedback').style.display = 'none';
@@ -707,11 +722,19 @@ class MultiplayerUI {
       document.getElementById('nextQuestionBtn').style.display = 'none';
       this.game.hasAnswered = false;
       this.startTimer();
+      
+      // Update leaderboard without diff for new question
+      const leaderboard = this.game.getLeaderboard();
+      this.updateMiniLeaderboard(leaderboard);
     };
 
     window.updateScores = (scores) => {
-      const leaderboard = this.game.getLeaderboard();
-      this.updateMiniLeaderboard(leaderboard);
+      // Only update leaderboard after all players have answered or timeout
+      if (this.allPlayersAnswered) {
+        const leaderboard = this.game.getLeaderboard();
+        this.updateMiniLeaderboardWithDiff(leaderboard);
+      }
+      // Otherwise, don't update the leaderboard during active question
     };
 
     window.updateQuestionCount = (count) => {
@@ -726,11 +749,28 @@ class MultiplayerUI {
 
       console.log('Total players:', totalPlayers, 'Answered:', answeredPlayers, 'Is host:', this.game.isHost);
 
-      if (this.game.isHost && answeredPlayers === totalPlayers) {
-        // All players have answered, show next button
-        console.log('All players answered! Showing next button');
-        document.getElementById('nextQuestionBtn').style.display = 'block';
-        document.getElementById('waitingForPlayers').style.display = 'none';
+      if (answeredPlayers === totalPlayers) {
+        // All players have answered
+        console.log('All players answered!');
+        
+        // Set flag to show diff in leaderboard
+        this.allPlayersAnswered = true;
+        
+        // Stop the timer for everyone
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+          this.timerInterval = null;
+        }
+        
+        // Update leaderboard with score differences
+        const leaderboard = this.game.getLeaderboard();
+        this.updateMiniLeaderboardWithDiff(leaderboard);
+        
+        // Show next button for host
+        if (this.game.isHost) {
+          document.getElementById('nextQuestionBtn').style.display = 'block';
+          document.getElementById('waitingForPlayers').style.display = 'none';
+        }
       }
     };
 
@@ -891,6 +931,14 @@ class MultiplayerUI {
 
       if (this.timeRemaining <= 0) {
         clearInterval(this.timerInterval);
+        
+        // Timer expired - set flag to show diff
+        this.allPlayersAnswered = true;
+        
+        // Update leaderboard with differences
+        const leaderboard = this.game.getLeaderboard();
+        this.updateMiniLeaderboardWithDiff(leaderboard);
+        
         if (!this.game.hasAnswered) {
           // Time's up - show correct answer and auto-submit
           const question = this.game.questions[this.game.currentQuestionIndex];
@@ -918,6 +966,24 @@ class MultiplayerUI {
         <span>${player.score}</span>
       </div>`
     ).join('');
+  }
+
+  updateMiniLeaderboardWithDiff(leaderboard) {
+    const miniLeaderboard = document.getElementById('miniLeaderboard');
+    miniLeaderboard.innerHTML = leaderboard.slice(0, 5).map((player, index) => {
+      const previousScore = this.previousScores[player.playerId] || 0;
+      const diff = player.score - previousScore;
+      const diffText = diff > 0 ? `+${diff}` : `${diff}`;
+      const diffColor = diff > 0 ? '#4CAF50' : (diff < 0 ? '#f44336' : 'var(--text-color)');
+      
+      return `<div class="leaderboard-item">
+        <span>${index + 1}. ${player.name}</span>
+        <span>
+          <span style="color: ${diffColor}; font-weight: bold; margin-right: 8px;">${diffText}</span>
+          <span>${player.score}</span>
+        </span>
+      </div>`;
+    }).join('');
   }
 
   showResults() {
