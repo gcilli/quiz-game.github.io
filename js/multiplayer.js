@@ -294,14 +294,26 @@ class MultiplayerQuiz {
 
     this.hasAnswered = true;
     
-    // Get the question start time from Firebase to calculate accurate elapsed time
-    const questionStartSnapshot = await this.roomRef.child('questionStartTime').once('value');
-    const questionStartTime = questionStartSnapshot.val();
-    const now = Date.now();
-    const timeElapsed = (now - questionStartTime) / 1000; // seconds
-    
     const currentQuestion = this.questions[this.currentQuestionIndex];
     const isCorrect = answerIndex === currentQuestion.rispostaCorretta;
+
+    // Write answer with server timestamp first
+    const answerRef = this.roomRef.child(`answers/${this.currentQuestionIndex}/${this.playerId}`);
+    await answerRef.set({
+      answer: answerIndex,
+      correct: isCorrect,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    // Now read back both timestamps to calculate elapsed time using server clock
+    const questionStartSnapshot = await this.roomRef.child('questionStartTime').once('value');
+    const answerSnapshot = await answerRef.once('value');
+    
+    const questionStartTime = questionStartSnapshot.val();
+    const answerTime = answerSnapshot.val().timestamp;
+    
+    // Calculate elapsed time using server timestamps (both from same clock)
+    const timeElapsed = Math.max(0.1, (answerTime - questionStartTime) / 1000); // seconds, minimum 0.1s
 
     // Calculate score
     let points = 0;
@@ -319,13 +331,10 @@ class MultiplayerQuiz {
       points = -Math.floor(this.wrongPenalty * speedPenaltyMultiplier);
     }
 
-    // Record the answer
-    await this.roomRef.child(`answers/${this.currentQuestionIndex}/${this.playerId}`).set({
-      answer: answerIndex,
-      correct: isCorrect,
+    // Update the answer with time and points
+    await answerRef.update({
       time: timeElapsed,
-      points: points,
-      timestamp: firebase.database.ServerValue.TIMESTAMP
+      points: points
     });
 
     // Update score
@@ -473,3 +482,454 @@ class MultiplayerQuiz {
 
 // Export for global use
 window.MultiplayerQuiz = MultiplayerQuiz;
+
+// =============================================================================
+// Game UI Controller
+// =============================================================================
+
+class MultiplayerUI {
+  constructor() {
+    this.game = null;
+    this.timerInterval = null;
+    this.timeRemaining = 30;
+    this.domande = {};
+  }
+
+  async init() {
+    // Setup dark mode (always works, no dependencies)
+    this.setupDarkMode();
+
+    // Setup event listeners (always works, no dependencies)
+    this.setupEventListeners();
+
+    // Load questions
+    try {
+      const response = await fetch('data/questions.json');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      this.domande = await response.json();
+      window.domande = this.domande;
+      console.log('Questions loaded successfully:', Object.keys(this.domande).length, 'categories');
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      alert('Errore nel caricamento delle domande. Dettagli nella console (F12).\nAssicurati di aprire il file tramite un server locale (non file://)');
+      return false;
+    }
+
+    // Initialize Firebase
+    if (!initializeFirebase()) {
+      alert('Impossibile connettersi a Firebase. Controlla la configurazione.');
+      return false;
+    }
+
+    // Setup global callbacks
+    this.setupGlobalCallbacks();
+
+    // Show home screen
+    this.showScreen('homeScreen');
+    
+    return true;
+  }
+
+  setupDarkMode() {
+    const darkModeCheckbox = document.getElementById("dark-mode-checkbox");
+    const body = document.body;
+
+    // Load saved dark mode preference
+    const savedDarkMode = SafeStorage.get("darkMode");
+    if (savedDarkMode) {
+      body.classList.add("dark-mode");
+      darkModeCheckbox.checked = true;
+    }
+
+    // Toggle dark mode on checkbox change
+    darkModeCheckbox.addEventListener("change", () => {
+      body.classList.toggle("dark-mode");
+      const isDarkMode = body.classList.contains("dark-mode");
+      SafeStorage.set("darkMode", isDarkMode);
+    });
+  }
+
+  setupEventListeners() {
+    // Home screen
+    document.getElementById('createRoomBtn').addEventListener('click', () => {
+      this.showScreen('createRoomScreen');
+    });
+
+    document.getElementById('joinRoomBtn').addEventListener('click', () => {
+      this.showScreen('joinRoomScreen');
+    });
+
+    document.getElementById('backToMainBtn').addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+
+    // Create room
+    document.getElementById('createRoomForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.createRoom();
+    });
+
+    document.getElementById('cancelCreateBtn').addEventListener('click', () => {
+      this.showScreen('homeScreen');
+    });
+
+    // Join room
+    document.getElementById('joinRoomForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.joinRoom();
+    });
+
+    document.getElementById('cancelJoinBtn').addEventListener('click', () => {
+      this.showScreen('homeScreen');
+    });
+
+    // Lobby
+    document.getElementById('startGameBtn').addEventListener('click', async () => {
+      try {
+        await this.game.startGame();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    document.getElementById('leaveLobbyBtn').addEventListener('click', () => {
+      if (this.game) {
+        this.game.cleanup();
+        this.game = null;
+      }
+      this.showScreen('homeScreen');
+    });
+
+    // Game
+    document.getElementById('nextQuestionBtn').addEventListener('click', async () => {
+      await this.game.nextQuestion();
+      document.getElementById('nextQuestionBtn').style.display = 'none';
+    });
+
+    // Results
+    document.getElementById('playAgainBtn').addEventListener('click', async () => {
+      try {
+        await this.game.replayGame();
+        this.showScreen('lobbyScreen');
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    document.getElementById('backToHomeBtn').addEventListener('click', () => {
+      if (this.game) {
+        this.game.cleanup();
+        this.game = null;
+      }
+      this.showScreen('homeScreen');
+    });
+  }
+
+  setupGlobalCallbacks() {
+    // Callback functions for multiplayer events
+    window.updatePlayersList = (players) => {
+      const playersList = document.getElementById('playersList');
+      const playerCount = document.getElementById('playerCount');
+
+      const playerArray = Object.entries(players).map(([id, data]) => ({
+        id,
+        ...data
+      }));
+
+      playerCount.textContent = playerArray.length;
+
+      playersList.innerHTML = playerArray.map(player => {
+        const isHost = player.id === this.game.hostId;
+        const hostBadge = isHost ? ' 👑' : '';
+        return `<div class="player-item">${player.name}${hostBadge}</div>`;
+      }).join('');
+    };
+
+    window.onGameStart = () => {
+      // Set up listener for first question (question 0)
+      this.game.setupAnswersListener(0);
+      this.showScreen('gameScreen');
+      this.displayQuestion();
+      this.startTimer();
+    };
+
+    window.onGameRestart = () => {
+      // Game was restarted, go back to lobby
+      this.showScreen('lobbyScreen');
+    };
+
+    window.onNewQuestion = (question, index) => {
+      document.getElementById('currentQuestionNum').textContent = index + 1;
+      this.displayQuestion();
+      document.getElementById('answerFeedback').style.display = 'none';
+      document.getElementById('waitingForPlayers').style.display = 'none';
+      document.getElementById('nextQuestionBtn').style.display = 'none';
+      this.game.hasAnswered = false;
+      this.startTimer();
+    };
+
+    window.updateScores = (scores) => {
+      const leaderboard = this.game.getLeaderboard();
+      this.updateMiniLeaderboard(leaderboard);
+    };
+
+    window.updateQuestionCount = (count) => {
+      document.getElementById('lobbyNumQuestions').textContent = count;
+      document.getElementById('totalQuestions').textContent = count;
+    };
+
+    window.updateAnswersStatus = (answers) => {
+      // Check if all players have answered
+      const totalPlayers = Object.keys(this.game.players).length;
+      const answeredPlayers = Object.keys(answers || {}).length;
+
+      console.log('Total players:', totalPlayers, 'Answered:', answeredPlayers, 'Is host:', this.game.isHost);
+
+      if (this.game.isHost && answeredPlayers === totalPlayers) {
+        // All players have answered, show next button
+        console.log('All players answered! Showing next button');
+        document.getElementById('nextQuestionBtn').style.display = 'block';
+        document.getElementById('waitingForPlayers').style.display = 'none';
+      }
+    };
+
+    window.onGameEnd = () => {
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+      }
+      this.showResults();
+    };
+  }
+
+  async createRoom() {
+    const hostName = document.getElementById('hostName').value.trim();
+    const numQuestions = parseInt(document.getElementById('numQuestions').value);
+    const timer = parseInt(document.getElementById('timerSetting').value);
+
+    if (!hostName) {
+      alert('Inserisci il tuo nome');
+      return;
+    }
+
+    try {
+      this.game = new MultiplayerQuiz();
+      this.game.init();
+
+      const roomCode = await this.game.createRoom(hostName, numQuestions, timer);
+
+      // Check if we got fewer questions than requested
+      const actualQuestions = this.game.questions.length;
+      if (actualQuestions < numQuestions) {
+        alert(`Attenzione: Hai richiesto ${numQuestions} domande ma sono disponibili solo ${actualQuestions} domande nel database.`);
+      }
+
+      // Show lobby
+      document.getElementById('roomCodeDisplay').textContent = roomCode;
+      document.getElementById('lobbyNumQuestions').textContent = actualQuestions;
+      document.getElementById('lobbyTimer').textContent = timer;
+      document.getElementById('totalQuestions').textContent = actualQuestions;
+      document.getElementById('startGameBtn').style.display = 'block';
+      document.getElementById('waitingMessage').style.display = 'none';
+
+      this.showScreen('lobbyScreen');
+    } catch (error) {
+      alert('Errore nella creazione della stanza: ' + error.message);
+    }
+  }
+
+  async joinRoom() {
+    const playerName = document.getElementById('playerName').value.trim();
+    const roomCode = document.getElementById('roomCodeInput').value.trim();
+
+    if (!playerName || !roomCode) {
+      alert('Inserisci nome e codice stanza');
+      return;
+    }
+
+    try {
+      this.game = new MultiplayerQuiz();
+      this.game.init();
+
+      await this.game.joinRoom(roomCode, playerName);
+
+      // Show lobby
+      document.getElementById('roomCodeDisplay').textContent = roomCode;
+      document.getElementById('lobbyNumQuestions').textContent = this.game.numQuestions || this.game.questions.length;
+      document.getElementById('lobbyTimer').textContent = this.game.timerDuration;
+      document.getElementById('totalQuestions').textContent = this.game.numQuestions || this.game.questions.length;
+      document.getElementById('startGameBtn').style.display = 'none';
+      document.getElementById('waitingMessage').style.display = 'block';
+
+      this.showScreen('lobbyScreen');
+    } catch (error) {
+      alert('Errore: ' + error.message);
+    }
+  }
+
+  displayQuestion() {
+    const question = this.game.questions[this.game.currentQuestionIndex];
+    document.getElementById('gameQuestion').textContent = question.domanda;
+
+    const answersContainer = document.getElementById('gameAnswers');
+    answersContainer.innerHTML = question.risposte.map((risposta, index) =>
+      `<button data-index="${index}">${risposta}</button>`
+    ).join('');
+
+    // Add click handlers
+    answersContainer.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => this.handleAnswer(parseInt(btn.dataset.index)));
+    });
+  }
+
+  async handleAnswer(answerIndex) {
+    if (this.game.hasAnswered) return;
+
+    const question = this.game.questions[this.game.currentQuestionIndex];
+    const correctIndex = question.rispostaCorretta;
+
+    try {
+      const result = await this.game.submitAnswer(answerIndex);
+
+      // Show correct/wrong on buttons
+      const buttons = document.querySelectorAll('#gameAnswers button');
+      buttons.forEach((btn, index) => {
+        btn.disabled = true;
+        if (index === correctIndex) {
+          btn.classList.add('correct');
+        } else if (index === answerIndex && !result.isCorrect) {
+          btn.classList.add('wrong');
+        }
+      });
+
+      // Show feedback
+      const feedbackEl = document.getElementById('answerFeedback');
+      const feedbackText = document.getElementById('feedbackText');
+      const feedbackPoints = document.getElementById('feedbackPoints');
+
+      if (result.isCorrect) {
+        feedbackText.textContent = '✓ Risposta corretta!';
+        feedbackText.style.color = '#4CAF50';
+      } else {
+        feedbackText.textContent = '✗ Risposta errata';
+        feedbackText.style.color = '#f44336';
+      }
+
+      feedbackPoints.textContent = `${result.points > 0 ? '+' : ''}${result.points} punti (${result.timeElapsed.toFixed(1)}s)`;
+      feedbackEl.style.display = 'block';
+
+      // Show waiting message (next button will appear when all players answered)
+      document.getElementById('waitingForPlayers').style.display = 'block';
+
+      // Don't stop timer - let it continue for other players
+
+      // Check if we need to hide waiting message (for host when all answered)
+      // This will be updated by the Firebase listener, but we'll double-check
+      setTimeout(() => {
+        const nextBtn = document.getElementById('nextQuestionBtn');
+        if (nextBtn.style.display === 'block') {
+          document.getElementById('waitingForPlayers').style.display = 'none';
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error submitting answer:', error);
+    }
+  }
+
+  startTimer() {
+    this.timeRemaining = this.game.timerDuration;
+    const timerEl = document.getElementById('gameTimer');
+    timerEl.textContent = this.timeRemaining;
+
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+
+    this.timerInterval = setInterval(() => {
+      this.timeRemaining--;
+      timerEl.textContent = this.timeRemaining;
+
+      if (this.timeRemaining <= 0) {
+        clearInterval(this.timerInterval);
+        if (!this.game.hasAnswered) {
+          // Time's up - show correct answer and auto-submit
+          const question = this.game.questions[this.game.currentQuestionIndex];
+          const correctIndex = question.rispostaCorretta;
+
+          const buttons = document.querySelectorAll('#gameAnswers button');
+          buttons.forEach((btn, index) => {
+            btn.disabled = true;
+            if (index === correctIndex) {
+              btn.classList.add('correct');
+            }
+          });
+
+          this.handleAnswer(-1);
+        }
+      }
+    }, 1000);
+  }
+
+  updateMiniLeaderboard(leaderboard) {
+    const miniLeaderboard = document.getElementById('miniLeaderboard');
+    miniLeaderboard.innerHTML = leaderboard.slice(0, 5).map((player, index) =>
+      `<div class="leaderboard-item">
+        <span>${index + 1}. ${player.name}</span>
+        <span>${player.score}</span>
+      </div>`
+    ).join('');
+  }
+
+  showResults() {
+    const leaderboard = this.game.getLeaderboard();
+    const finalLeaderboard = document.getElementById('finalLeaderboard');
+
+    finalLeaderboard.innerHTML = leaderboard.map((player, index) => {
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+      return `<div class="final-leaderboard-item ${index < 3 ? 'podium' : ''}">
+        <span class="rank">${index + 1}</span>
+        <span class="player-name">${medal} ${player.name}</span>
+        <span class="player-score">${player.score}</span>
+      </div>`;
+    }).join('');
+
+    // Show "Play Again" button only for host
+    const playAgainBtn = document.getElementById('playAgainBtn');
+    if (this.game.isHost) {
+      playAgainBtn.style.display = 'block';
+    } else {
+      playAgainBtn.style.display = 'none';
+    }
+
+    this.showScreen('resultsScreen');
+  }
+
+  showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => {
+      screen.classList.remove('active');
+    });
+    document.getElementById(screenId).classList.add('active');
+  }
+
+  cleanup() {
+    if (this.game) {
+      this.game.cleanup();
+    }
+  }
+}
+
+// Initialize the app when DOM is ready
+let multiplayerUI = null;
+
+window.addEventListener('DOMContentLoaded', async () => {
+  multiplayerUI = new MultiplayerUI();
+  await multiplayerUI.init();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  if (multiplayerUI) {
+    multiplayerUI.cleanup();
+  }
+});
