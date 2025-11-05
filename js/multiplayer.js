@@ -389,13 +389,21 @@ class MultiplayerQuiz {
     const allQuestions = [];
     for (const categoria in window.domande) {
       window.domande[categoria].forEach(q => {
-        // Create question object with correct answer index
-        // If not specified, default to 0 (first answer is correct)
+        // Get the correct answer (default to first one if not specified)
+        const correctAnswerIndex = (typeof q.rispostaCorretta === 'number') ? q.rispostaCorretta : 0;
+        const correctAnswer = q.risposte[correctAnswerIndex];
+        
+        // Create a copy of answers and shuffle them
+        const shuffledAnswers = [...q.risposte].sort(() => Math.random() - 0.5);
+        
+        // Find the new index of the correct answer after shuffling
+        const newCorrectIndex = shuffledAnswers.indexOf(correctAnswer);
+        
         const question = {
           categoria: categoria,
           domanda: q.domanda,
-          risposte: [...q.risposte], // Create a copy of the array
-          rispostaCorretta: (typeof q.rispostaCorretta === 'number') ? q.rispostaCorretta : 0
+          risposte: shuffledAnswers,
+          rispostaCorretta: newCorrectIndex
         };
         allQuestions.push(question);
       });

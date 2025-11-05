@@ -226,8 +226,11 @@ function nuovaDomanda() {
 
     aggiornaBookmarkButton();
 
-    const risposteMischiate = [...q.risposte].sort(() => Math.random() - 0.5);
+    // Store the correct answer before shuffling (first answer is correct by default)
     correctAnswer = q.risposte[0];
+    
+    // Shuffle the answers
+    const risposteMischiate = [...q.risposte].sort(() => Math.random() - 0.5);
 
     currentQuestionIndex = quizHistory.length;
     quizHistory.push({
