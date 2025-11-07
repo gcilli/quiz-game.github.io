@@ -644,8 +644,20 @@ body.dark-mode .wrong-question strong {
     gap: 1rem;
 }
 
+.game-header .question-counter {
+    flex: 1;
+    text-align: left;
+}
+
 .game-header .bookmark-btn-container {
     flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+}
+
+.game-header .timer {
+    flex: 1;
+    text-align: right;
 }
 
 .question-counter {
