@@ -641,6 +641,11 @@ body.dark-mode .wrong-question strong {
     padding: 1rem;
     background: var(--bg);
     border-radius: 8px;
+    gap: 1rem;
+}
+
+.game-header .bookmark-btn-container {
+    flex: 0 0 auto;
 }
 
 .question-counter {

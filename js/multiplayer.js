@@ -534,6 +534,8 @@ class MultiplayerUI {
     this.domande = {};
     this.previousScores = {}; // Track previous scores to show differences
     this.allPlayersAnswered = false; // Track if all players answered current question
+    this.currentQuestionId = null; // Track current question ID for bookmarking
+    this.bookmarkBtn = null; // Bookmark button reference
   }
 
   async init() {
@@ -647,6 +649,12 @@ class MultiplayerUI {
     document.getElementById('nextQuestionBtn').addEventListener('click', async () => {
       await this.game.nextQuestion();
       document.getElementById('nextQuestionBtn').style.display = 'none';
+    });
+
+    // Bookmark button
+    this.bookmarkBtn = document.getElementById('mp-bookmark-btn');
+    this.bookmarkBtn.addEventListener('click', () => {
+      this.toggleBookmark();
     });
 
     // Results
@@ -851,6 +859,10 @@ class MultiplayerUI {
     const question = this.game.questions[this.game.currentQuestionIndex];
     document.getElementById('gameQuestion').textContent = question.domanda;
 
+    // Generate unique question ID for bookmarking
+    this.currentQuestionId = `${question.categoria}_${question.domanda.substring(0, 50)}`;
+    this.updateBookmarkButton();
+
     const answersContainer = document.getElementById('gameAnswers');
     answersContainer.innerHTML = question.risposte.map((risposta, index) =>
       `<button data-index="${index}">${risposta}</button>`
@@ -1015,6 +1027,37 @@ class MultiplayerUI {
       screen.classList.remove('active');
     });
     document.getElementById(screenId).classList.add('active');
+  }
+
+  updateBookmarkButton() {
+    if (!this.currentQuestionId || !this.bookmarkBtn) return;
+
+    const savedQuestions = SafeStorage.get("savedQuestions") || [];
+    if (savedQuestions.includes(this.currentQuestionId)) {
+      this.bookmarkBtn.classList.add("saved");
+      this.bookmarkBtn.textContent = "⭐";
+    } else {
+      this.bookmarkBtn.classList.remove("saved");
+      this.bookmarkBtn.textContent = "☆";
+    }
+  }
+
+  toggleBookmark() {
+    if (!this.currentQuestionId) return;
+
+    const savedQuestions = SafeStorage.get("savedQuestions") || [];
+    const index = savedQuestions.indexOf(this.currentQuestionId);
+
+    if (index >= 0) {
+      // Remove bookmark
+      savedQuestions.splice(index, 1);
+    } else {
+      // Add bookmark
+      savedQuestions.push(this.currentQuestionId);
+    }
+
+    SafeStorage.set("savedQuestions", savedQuestions);
+    this.updateBookmarkButton();
   }
 
   cleanup() {
