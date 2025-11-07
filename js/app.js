@@ -71,9 +71,9 @@ async function loadQuestions() {
     }
 }
 
-// Initialize DOM references
-function initializeDOMReferences() {
-    categoryMenu = document.getElementById("category-menu");
+// Initialize DOM elements
+function initDomElements() {
+    categoryMenu = document.getElementById("singleplayer-menu");
     startBtn = document.getElementById("start-btn");
     quizContainer = document.getElementById("quiz");
     categoryEl = document.getElementById("category");
@@ -98,7 +98,9 @@ function initializeDOMReferences() {
 
 // Helper per mostrare/nascondere sezioni
 const mostraSezione = (sezione) => {
-    categoryMenu.style.display = sezione === 'menu' ? "flex" : "none";
+    document.getElementById('main-menu').style.display = sezione === 'main-menu' ? "block" : "none";
+    document.getElementById('singleplayer-menu').style.display = sezione === 'singleplayer-menu' ? "flex" : "none";
+    document.getElementById('multiplayer-menu').style.display = sezione === 'multiplayer-menu' ? "block" : "none";
     quizContainer.style.display = sezione === 'quiz' ? "flex" : "none";
     summaryEl.style.display = sezione === 'summary' ? "flex" : "none";
 };
@@ -458,7 +460,7 @@ function aggiornaBookmarkButton() {
 
 function tornaAlMenu() {
     clearInterval(timerInterval);
-    mostraSezione('menu');
+    mostraSezione('singleplayer-menu');
     timerEl.textContent = "";
     const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']");
     checkboxes.forEach(cb => cb.checked = false);
@@ -467,6 +469,33 @@ function tornaAlMenu() {
 
 // Event Listeners
 function initializeEventListeners() {
+    // Main menu navigation
+    document.getElementById("singleplayer-mode-btn").addEventListener("click", () => {
+        mostraSezione('singleplayer-menu');
+    });
+
+    document.getElementById("multiplayer-mode-btn").addEventListener("click", () => {
+        window.location.href = 'multiplayer.html';
+    });
+
+    document.getElementById("back-to-main-menu-btn").addEventListener("click", () => {
+        mostraSezione('main-menu');
+    });
+
+    document.getElementById("back-to-main-from-mp-btn").addEventListener("click", () => {
+        mostraSezione('main-menu');
+    });
+
+    // Multiplayer menu buttons - redirect to multiplayer.html
+    document.getElementById("create-room-mp-btn").addEventListener("click", () => {
+        window.location.href = 'multiplayer.html';
+    });
+
+    document.getElementById("join-room-mp-btn").addEventListener("click", () => {
+        window.location.href = 'multiplayer.html';
+    });
+
+    // Quiz controls
     nextBtn.addEventListener("click", nuovaDomanda);
 
     prevBtn.addEventListener("click", () => {
@@ -559,11 +588,14 @@ function initializeEventListeners() {
 // Initialize app
 document.addEventListener("DOMContentLoaded", async () => {
     await loadQuestions();
-    initializeDOMReferences();
+    initDomElements();
     initializeEventListeners();
     initializeChartListeners();
 
     if (!SafeStorage.isAvailable()) {
         console.warn("localStorage non disponibile — verrà usato storage in-memory.");
     }
+
+    // Show main menu on load
+    mostraSezione('main-menu');
 });

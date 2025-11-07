@@ -23,8 +23,23 @@
             </div>
         </div>
 
-        <!-- Menu categorie -->
-        <div id="category-menu" class="category-select">
+        <!-- Main Menu -->
+        <div id="main-menu" class="main-menu">
+            <h2 style="color: var(--text-color); margin-bottom: 2rem;">Seleziona modalità di gioco</h2>
+            <div class="mode-buttons">
+                <button id="singleplayer-mode-btn" class="mode-btn">
+                    <span class="mode-icon">📝</span>
+                    <span class="mode-title">Single Player</span>
+                </button>
+                <button id="multiplayer-mode-btn" class="mode-btn">
+                    <span class="mode-icon">🎮</span>
+                    <span class="mode-title">Multiplayer</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Single Player Setup Menu -->
+        <div id="singleplayer-menu" class="category-select" style="display: none;">      
             <p><strong>Seleziona una o più categorie:</strong></p>
             <label><input type="checkbox" value="CULTURA_GENERALE" checked> Cultura generale</label>
             <label><input type="checkbox" value="ATTITUDINALI_LOGICO_DEDUTTIVI" checked> Logico-deduttivi</label>
@@ -48,8 +63,18 @@
             </label>
 
             <button id="start-btn" class="btn" type="button">Inizia quiz</button>
-            <button id="multiplayer-btn" class="btn" style="background:#28a745; color: white;" type="button">🎮 Modalità Multiplayer</button>
             <button id="clear-persistent" class="btn" style="background:#dc3545;" type="button">Cancella cronologia</button>
+            <button id="back-to-main-menu-btn" class="btn btn-tertiary" style="margin-bottom: 1rem;">← Menù principale</button>
+        </div>
+
+        <!-- Multiplayer Menu -->
+        <div id="multiplayer-menu" class="multiplayer-menu" style="display: none;">
+            <button id="back-to-main-from-mp-btn" class="btn btn-tertiary" style="margin-bottom: 1rem;">← Menù principale</button>
+            
+            <div class="button-group">
+                <button id="create-room-mp-btn" class="btn btn-primary">Crea Stanza</button>
+                <button id="join-room-mp-btn" class="btn btn-secondary">Unisciti</button>
+            </div>
         </div>
 
         <!-- Area quiz -->
@@ -59,7 +84,7 @@
                 <div id="progress-bar-fill" class="progress-bar-fill"></div>
             </div>
             <div class="quiz-header">
-                <button id="back-btn" class="back-btn" type="button">← Menù</button>
+                <button id="back-btn" class="back-btn" type="button">← Menù principale</button>
                 <div class="bookmark-btn-container">
                     <button id="bookmark-btn" class="bookmark-btn" type="button">⭐</button>
                 </div>

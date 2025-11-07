@@ -25,7 +25,8 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app, database;
+let app = null;
+let database = null;
 
 function initializeFirebase() {
   try {
@@ -35,13 +36,33 @@ function initializeFirebase() {
       return false;
     }
 
+    // Check if already initialized
+    if (app !== null) {
+      console.log('Firebase already initialized');
+      return true;
+    }
+
     // Initialize Firebase app
     app = firebase.initializeApp(firebaseConfig);
     database = firebase.database();
     
+    // Update window references
+    window.firebaseApp = app;
+    window.firebaseDatabase = database;
+    
     console.log('Firebase initialized successfully');
     return true;
   } catch (error) {
+    // Check if error is because app already exists
+    if (error.code === 'app/duplicate-app') {
+      console.log('Firebase app already exists, using existing instance');
+      app = firebase.app();
+      database = firebase.database();
+      window.firebaseApp = app;
+      window.firebaseDatabase = database;
+      return true;
+    }
+    
     console.error('Error initializing Firebase:', error);
     alert('Errore durante l\'inizializzazione di Firebase. Controlla la configurazione.');
     return false;
@@ -49,6 +70,4 @@ function initializeFirebase() {
 }
 
 // Export for use in other modules
-window.firebaseApp = app;
-window.firebaseDatabase = database;
 window.initializeFirebase = initializeFirebase;

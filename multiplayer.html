@@ -22,48 +22,37 @@
                     </label>
                 </div>
             </div>
-            <p style="color: var(--text-color);">Sfida i tuoi amici in tempo reale!</p>
             
             <div class="button-group">
                 <button id="createRoomBtn" class="btn btn-primary">Crea Stanza</button>
                 <button id="joinRoomBtn" class="btn btn-secondary">Unisciti</button>
-                <button id="backToMainBtn" class="btn btn-tertiary">← Menù</button>
+                <button id="backToMainBtn" class="btn btn-tertiary">← Menù principale</button>
             </div>
         </div>
 
         <!-- Create Room Screen -->
         <div id="createRoomScreen" class="screen">
-            <h2>Crea una Stanza</h2>
+            <h2 style="margin-bottom: 2rem;">Crea una Stanza</h2>
             
             <form id="createRoomForm">
-                <div class="form-group">
-                    <label for="hostName">Il tuo nome:</label>
+                <label>
+                    <p><strong>Il tuo nome:</strong></p>
                     <input type="text" id="hostName" maxlength="20" required placeholder="Inserisci il tuo nome">
-                </div>
+                </label>
                 
-                <div class="form-group">
-                    <label for="numQuestions">Numero di domande:</label>
-                    <select id="numQuestions" required>
-                        <option value="5">5 domande</option>
-                        <option value="10" selected>10 domande</option>
-                        <option value="15">15 domande</option>
-                        <option value="20">20 domande</option>
-                    </select>
-                </div>
+                <label>
+                    <p><strong>Numero di domande:</strong></p>
+                    <input id="numQuestions" type="number" min="1" max="100" value="10" required>
+                </label>
                 
-                <div class="form-group">
-                    <label for="timerSetting">Tempo per domanda:</label>
-                    <select id="timerSetting" required>
-                        <option value="15">15 secondi</option>
-                        <option value="30" selected>30 secondi</option>
-                        <option value="45">45 secondi</option>
-                        <option value="60">60 secondi</option>
-                    </select>
-                </div>
+                <label>
+                    <p><strong>Tempo per domanda (secondi):</strong></p>
+                    <input id="timerSetting" type="number" min="5" max="300" value="30" required>
+                </label>
                 
                 <div class="button-group">
                     <button type="submit" class="btn btn-primary">Crea Stanza</button>
-                    <button type="button" id="cancelCreateBtn" class="btn btn-tertiary">Annulla</button>
+                    <button type="button" id="cancelCreateBtn" class="btn btn-tertiary">← Menù principale</button>
                 </div>
             </form>
         </div>
@@ -85,7 +74,7 @@
                 
                 <div class="button-group">
                     <button type="submit" class="btn btn-primary">Unisciti</button>
-                    <button type="button" id="cancelJoinBtn" class="btn btn-tertiary">Annulla</button>
+                    <button type="button" id="cancelJoinBtn" class="btn btn-tertiary">← Menù principale</button>
                 </div>
             </form>
         </div>
