@@ -367,13 +367,17 @@ function disegnaGraficoRisultati() {
 }
 
 function initializeChartListeners() {
+    const accuracyChart = document.getElementById("accuracy-chart");
+    
+    if (!accuracyChart) return;
+    
     // Event listener per click (desktop)
-    document.getElementById("accuracy-chart").addEventListener("click", (event) => {
+    accuracyChart.addEventListener("click", (event) => {
         handleChartInteraction(event.clientX, event.clientY);
     });
 
     // Event listener per touch (mobile) - solo previene default se si tocca un punto
-    document.getElementById("accuracy-chart").addEventListener("touchstart", (event) => {
+    accuracyChart.addEventListener("touchstart", (event) => {
         const touch = event.touches[0];
         const pointClicked = handleChartInteraction(touch.clientX, touch.clientY);
         

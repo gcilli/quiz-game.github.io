@@ -10,19 +10,6 @@
     <div class="container">
         <!-- Home Screen -->
         <div id="homeScreen" class="screen active">
-            <div class="header-container">
-                <h1>🎮 Quiz Multiplayer</h1>
-                <div class="dark-mode-toggle-wrapper">
-                    <label style="position: relative; cursor: pointer;">
-                        <input type="checkbox" id="dark-mode-checkbox" class="dark-mode-checkbox">
-                        <div class="toggle-switch">
-                            <span class="toggle-icon sun-icon">☀️</span>
-                            <span class="toggle-icon moon-icon">🌙</span>
-                        </div>
-                    </label>
-                </div>
-            </div>
-            
             <div class="button-group">
                 <button id="createRoomBtn" class="btn btn-primary">Crea Stanza</button>
                 <button id="joinRoomBtn" class="btn btn-secondary">Unisciti</button>
@@ -37,7 +24,7 @@
             <form id="createRoomForm">
                 <label>
                     <p><strong>Il tuo nome:</strong></p>
-                    <input type="text" id="hostName" maxlength="20" required placeholder="Inserisci il tuo nome">
+                    <input type="text" id="hostName">
                 </label>
                 
                 <label>
@@ -59,18 +46,18 @@
 
         <!-- Join Room Screen -->
         <div id="joinRoomScreen" class="screen">
-            <h2>Unisciti a una Stanza</h2>
+            <h2 style="margin-bottom: 2rem;">Unisciti a una Stanza</h2>
             
             <form id="joinRoomForm">
-                <div class="form-group">
-                    <label for="playerName">Il tuo nome:</label>
-                    <input type="text" id="playerName" maxlength="20" required placeholder="Inserisci il tuo nome">
-                </div>
+                <label>
+                    <p><strong>Il tuo nome:</strong></p>
+                    <input type="text" id="playerName" maxlength="20">
+                </label>
                 
-                <div class="form-group">
-                    <label for="roomCodeInput">Codice stanza:</label>
+                <label>
+                    <p><strong>Codice stanza:</strong></p>
                     <input type="text" id="roomCodeInput" maxlength="6" required placeholder="Es: ABC123" style="text-transform: uppercase;">
-                </div>
+                </label>
                 
                 <div class="button-group">
                     <button type="submit" class="btn btn-primary">Unisciti</button>

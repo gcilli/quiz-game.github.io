@@ -73,7 +73,8 @@ async function loadQuestions() {
 
 // Initialize DOM elements
 function initDomElements() {
-    categoryMenu = document.getElementById("singleplayer-menu");
+    // Try to get category menu from either location (index.html or singleplayer.html)
+    categoryMenu = document.getElementById("singleplayer-menu") || document.querySelector(".category-select");
     startBtn = document.getElementById("start-btn");
     quizContainer = document.getElementById("quiz");
     categoryEl = document.getElementById("category");
@@ -98,11 +99,29 @@ function initDomElements() {
 
 // Helper per mostrare/nascondere sezioni
 const mostraSezione = (sezione) => {
-    document.getElementById('main-menu').style.display = sezione === 'main-menu' ? "block" : "none";
-    document.getElementById('singleplayer-menu').style.display = sezione === 'singleplayer-menu' ? "flex" : "none";
-    document.getElementById('multiplayer-menu').style.display = sezione === 'multiplayer-menu' ? "block" : "none";
-    quizContainer.style.display = sezione === 'quiz' ? "flex" : "none";
-    summaryEl.style.display = sezione === 'summary' ? "flex" : "none";
+    // Handle index.html sections
+    const mainMenu = document.getElementById('main-menu');
+    const singleplayerMenu = document.getElementById('singleplayer-menu');
+    const multiplayerMenu = document.getElementById('multiplayer-menu');
+    
+    if (mainMenu) mainMenu.style.display = sezione === 'main-menu' ? "block" : "none";
+    if (singleplayerMenu) singleplayerMenu.style.display = sezione === 'singleplayer-menu' ? "flex" : "none";
+    if (multiplayerMenu) multiplayerMenu.style.display = sezione === 'multiplayer-menu' ? "block" : "none";
+    
+    // Handle singleplayer.html screens (using screen class system)
+    const setupScreen = document.getElementById('setupScreen');
+    if (setupScreen) {
+        setupScreen.style.display = sezione === 'singleplayer-menu' ? "block" : "none";
+        setupScreen.classList.toggle('active', sezione === 'singleplayer-menu');
+    }
+    
+    // Handle shared sections
+    if (quizContainer) {
+        quizContainer.style.display = sezione === 'quiz' ? "flex" : "none";
+    }
+    if (summaryEl) {
+        summaryEl.style.display = sezione === 'summary' ? "flex" : "none";
+    }
 };
 
 function avviaQuiz() {
@@ -211,7 +230,8 @@ function nuovaDomanda() {
 
     if (domandeDisponibili.length === 0) {
         alert("Nessuna domanda salvata disponibile nelle categorie selezionate. Disattiva 'Solo domande salvate' o salva alcune domande.");
-        tornaAlMenu();
+        mostraSezione('singleplayer-menu');
+        quizInCorso = false;
         return;
     }
 
@@ -460,88 +480,150 @@ function aggiornaBookmarkButton() {
 
 function tornaAlMenu() {
     clearInterval(timerInterval);
-    mostraSezione('singleplayer-menu');
     timerEl.textContent = "";
-    const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']");
-    checkboxes.forEach(cb => cb.checked = false);
+    
+    // Check if we're on singleplayer.html or index.html
+    if (window.location.pathname.includes('singleplayer.html')) {
+        window.location.href = 'index.html';
+    } else {
+        mostraSezione('singleplayer-menu');
+        const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']");
+        checkboxes.forEach(cb => cb.checked = false);
+    }
+    
     quizInCorso = false;
 }
 
 // Event Listeners
 function initializeEventListeners() {
-    // Main menu navigation
-    document.getElementById("singleplayer-mode-btn").addEventListener("click", () => {
-        mostraSezione('singleplayer-menu');
-    });
+    // Main menu navigation (only on index.html)
+    const singleplayerModeBtn = document.getElementById("singleplayer-mode-btn");
+    if (singleplayerModeBtn) {
+        singleplayerModeBtn.addEventListener("click", () => {
+            window.location.href = 'singleplayer.html';
+        });
+    }
 
-    document.getElementById("multiplayer-mode-btn").addEventListener("click", () => {
-        window.location.href = 'multiplayer.html';
-    });
+    const multiplayerModeBtn = document.getElementById("multiplayer-mode-btn");
+    if (multiplayerModeBtn) {
+        multiplayerModeBtn.addEventListener("click", () => {
+            window.location.href = 'multiplayer.html';
+        });
+    }
 
-    document.getElementById("back-to-main-menu-btn").addEventListener("click", () => {
-        mostraSezione('main-menu');
-    });
+    // Back to main menu buttons
+    const backToMainBtn = document.getElementById("back-to-main-btn");
+    if (backToMainBtn) {
+        backToMainBtn.addEventListener("click", () => {
+            window.location.href = 'index.html';
+        });
+    }
 
-    document.getElementById("back-to-main-from-mp-btn").addEventListener("click", () => {
-        mostraSezione('main-menu');
-    });
+    const backToMainMenuBtn = document.getElementById("back-to-main-menu-btn");
+    if (backToMainMenuBtn) {
+        backToMainMenuBtn.addEventListener("click", () => {
+            mostraSezione('main-menu');
+        });
+    }
+
+    const backToMainFromMpBtn = document.getElementById("back-to-main-from-mp-btn");
+    if (backToMainFromMpBtn) {
+        backToMainFromMpBtn.addEventListener("click", () => {
+            mostraSezione('main-menu');
+        });
+    }
 
     // Multiplayer menu buttons - redirect to multiplayer.html
-    document.getElementById("create-room-mp-btn").addEventListener("click", () => {
-        window.location.href = 'multiplayer.html';
-    });
+    const createRoomMpBtn = document.getElementById("create-room-mp-btn");
+    if (createRoomMpBtn) {
+        createRoomMpBtn.addEventListener("click", () => {
+            window.location.href = 'multiplayer.html';
+        });
+    }
 
-    document.getElementById("join-room-mp-btn").addEventListener("click", () => {
-        window.location.href = 'multiplayer.html';
-    });
+    const joinRoomMpBtn = document.getElementById("join-room-mp-btn");
+    if (joinRoomMpBtn) {
+        joinRoomMpBtn.addEventListener("click", () => {
+            window.location.href = 'multiplayer.html';
+        });
+    }
 
-    // Quiz controls
-    nextBtn.addEventListener("click", nuovaDomanda);
+    // Quiz controls - only add if elements exist
+    if (nextBtn) {
+        nextBtn.addEventListener("click", nuovaDomanda);
+    }
 
-    prevBtn.addEventListener("click", () => {
-        if (currentQuestionIndex > 0) {
-            currentQuestionIndex--;
-            answersEl.innerHTML = "";
-            mostraDomandaDaCronologia();
-        }
-    });
+    if (prevBtn) {
+        prevBtn.addEventListener("click", () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                answersEl.innerHTML = "";
+                mostraDomandaDaCronologia();
+            }
+        });
+    }
 
-    bookmarkBtn.addEventListener("click", () => {
-        if (!currentQuestionId) return;
+    if (bookmarkBtn) {
+        bookmarkBtn.addEventListener("click", () => {
+            if (!currentQuestionId) return;
 
-        const savedQuestions = SafeStorage.get("savedQuestions") || [];
-        const index = savedQuestions.indexOf(currentQuestionId);
+            const savedQuestions = SafeStorage.get("savedQuestions") || [];
+            const index = savedQuestions.indexOf(currentQuestionId);
 
-        if (index >= 0) {
-            savedQuestions.splice(index, 1);
-        } else {
-            savedQuestions.push(currentQuestionId);
-        }
+            if (index >= 0) {
+                savedQuestions.splice(index, 1);
+            } else {
+                savedQuestions.push(currentQuestionId);
+            }
 
-        SafeStorage.set("savedQuestions", savedQuestions);
-        aggiornaBookmarkButton();
-    });
+            SafeStorage.set("savedQuestions", savedQuestions);
+            aggiornaBookmarkButton();
+        });
+    }
 
-    backBtn.addEventListener("click", () => {
-        if (quizInCorso && !confirm("Sei sicuro di voler tornare al menu? Il quiz in corso andrà perso.")) return;
-        tornaAlMenu();
-    });
+    if (backBtn) {
+        backBtn.addEventListener("click", () => {
+            if (quizInCorso && !confirm("Sei sicuro di voler tornare al menu? Il quiz in corso andrà perso.")) return;
+            tornaAlMenu();
+        });
+    }
 
-    restartBtn.addEventListener("click", tornaAlMenu);
+    if (restartBtn) {
+        restartBtn.addEventListener("click", tornaAlMenu);
+    }
 
-    clearPersistentBtn.addEventListener("click", () => {
-        if (!confirm("Sei sicuro di voler cancellare tutta la cronologia e le domande salvate? Questa azione non può essere annullata.")) return;
-        SafeStorage.remove("erroriQuiz");
-        SafeStorage.remove("corretteQuiz");
-        SafeStorage.remove("sessionHistory");
-        SafeStorage.remove("savedQuestions");
-        alert("Cronologia e domande salvate cancellate.");
-    });
+    if (clearPersistentBtn) {
+        clearPersistentBtn.addEventListener("click", () => {
+            if (!confirm("Sei sicuro di voler cancellare tutta la cronologia e le domande salvate? Questa azione non può essere annullata.")) return;
+            SafeStorage.remove("erroriQuiz");
+            SafeStorage.remove("corretteQuiz");
+            SafeStorage.remove("sessionHistory");
+            SafeStorage.remove("savedQuestions");
+            alert("Cronologia e domande salvate cancellate.");
+        });
+    }
+
+    if (startBtn) {
+        startBtn.addEventListener("click", (event) => {
+            if (!userActivated) {
+                userActivated = true;
+                try {
+                    const ac = new (window.AudioContext || window.webkitAudioContext)();
+                    ac.close().catch(() => { });
+                } catch (e) { }
+            }
+
+            event.preventDefault();
+            avviaQuiz();
+        });
+    }
 
     const accuracyFilter = document.getElementById("accuracy-filter");
-    accuracyFilter.addEventListener("change", () => {
-        disegnaGraficoAccuratezza();
-    });
+    if (accuracyFilter) {
+        accuracyFilter.addEventListener("change", () => {
+            disegnaGraficoAccuratezza();
+        });
+    }
 
     // Dark Mode Toggle
     const darkModeCheckbox = document.getElementById("dark-mode-checkbox");
@@ -550,31 +632,23 @@ function initializeEventListeners() {
     const savedDarkMode = SafeStorage.get("darkMode");
     if (savedDarkMode) {
         body.classList.add("dark-mode");
-        darkModeCheckbox.checked = true;
+        if (darkModeCheckbox) {
+            darkModeCheckbox.checked = true;
+        }
     }
 
-    darkModeCheckbox.addEventListener("change", () => {
-        body.classList.toggle("dark-mode");
-        const isDarkMode = body.classList.contains("dark-mode");
-        SafeStorage.set("darkMode", isDarkMode);
+    if (darkModeCheckbox) {
+        darkModeCheckbox.addEventListener("change", () => {
+            body.classList.toggle("dark-mode");
+            const isDarkMode = body.classList.contains("dark-mode");
+            SafeStorage.set("darkMode", isDarkMode);
 
-        if (summaryEl.style.display === "flex") {
-            disegnaGraficoAccuratezza();
-            disegnaGraficoRisultati();
-        }
-    });
-
-    startBtn.addEventListener("click", (event) => {
-        if (!userActivated) {
-            userActivated = true;
-            try {
-                const ac = new (window.AudioContext || window.webkitAudioContext)();
-                ac.close().catch(() => { });
-            } catch (e) { }
-        }
-
-        avviaQuiz();
-    });
+            if (summaryEl && summaryEl.style.display === "flex") {
+                disegnaGraficoAccuratezza();
+                disegnaGraficoRisultati();
+            }
+        });
+    }
 
     // Multiplayer button
     const multiplayerBtn = document.getElementById("multiplayer-btn");
@@ -596,6 +670,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.warn("localStorage non disponibile — verrà usato storage in-memory.");
     }
 
-    // Show main menu on load
-    mostraSezione('main-menu');
+    // Determine which page we're on and show appropriate screen
+    if (window.location.pathname.includes('singleplayer.html')) {
+        mostraSezione('singleplayer-menu');
+    } else if (document.getElementById('main-menu')) {
+        // We're on index.html
+        mostraSezione('main-menu');
+    }
 });

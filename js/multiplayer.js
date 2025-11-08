@@ -583,15 +583,21 @@ class MultiplayerUI {
     const savedDarkMode = SafeStorage.get("darkMode");
     if (savedDarkMode) {
       body.classList.add("dark-mode");
-      darkModeCheckbox.checked = true;
     }
 
-    // Toggle dark mode on checkbox change
-    darkModeCheckbox.addEventListener("change", () => {
-      body.classList.toggle("dark-mode");
-      const isDarkMode = body.classList.contains("dark-mode");
-      SafeStorage.set("darkMode", isDarkMode);
-    });
+    // Only set up event listener if checkbox exists
+    if (darkModeCheckbox) {
+      if (savedDarkMode) {
+        darkModeCheckbox.checked = true;
+      }
+      
+      // Toggle dark mode on checkbox change
+      darkModeCheckbox.addEventListener("change", () => {
+        body.classList.toggle("dark-mode");
+        const isDarkMode = body.classList.contains("dark-mode");
+        SafeStorage.set("darkMode", isDarkMode);
+      });
+    }
   }
 
   setupEventListeners() {
@@ -859,8 +865,8 @@ class MultiplayerUI {
     const question = this.game.questions[this.game.currentQuestionIndex];
     document.getElementById('gameQuestion').textContent = question.domanda;
 
-    // Generate unique question ID for bookmarking
-    this.currentQuestionId = `${question.categoria}_${question.domanda.substring(0, 50)}`;
+    // Generate unique question ID for bookmarking (same format as single player)
+    this.currentQuestionId = `${question.categoria}::${question.domanda}`;
     this.updateBookmarkButton();
 
     const answersContainer = document.getElementById('gameAnswers');

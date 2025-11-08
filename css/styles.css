@@ -79,15 +79,31 @@ h2 {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 0.5rem;
+    gap: 1rem;
     cursor: pointer;
     color: var(--text-color);
+    width: 100%;
 }
 
 .category-select label p {
-    width: 10rem;
+    flex: 2;
     text-align: left;
     color: var(--text-color);
+    word-wrap: break-word;
+    margin: 0;
+}
+
+.category-select label input[type="number"] {
+    flex: 1;
+    min-width: 0;
+    display: block;
+    margin: 0;
+    padding: 0.5rem;
+    border-radius: 0.4rem;
+    border: 1px solid var(--border-color);
+    background: var(--container-bg);
+    color: var(--text-color);
+    font-size: 1em;
 }
 
 .category-select>p {
@@ -176,44 +192,44 @@ h2 {
 
 /* Main Menu Styles */
 .main-menu {
-    max-width: 800px;
+    max-width: 500px;
     margin: 0 auto;
     padding: 2rem;
 }
 
 .mode-buttons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
     margin-top: 2rem;
 }
 
 .mode-btn {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     gap: 1rem;
-    padding: 3rem 2rem;
+    padding: 1.5rem 2rem;
     background: var(--container-bg);
     border: 2px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
     color: var(--text-color);
 }
 
 .mode-btn:hover {
-    transform: translateY(-5px);
+    transform: translateY(-2px);
     border-color: #0077ff;
-    box-shadow: 0 8px 20px rgba(0, 119, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
 }
 
 .mode-icon {
-    font-size: 4rem;
+    font-size: 2rem;
 }
 
 .mode-title {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 600;
     color: var(--text-color);
 }
@@ -658,30 +674,67 @@ body.dark-mode .wrong-question strong {
 }
 
 /* Create room form labels with inline layout */
-#createRoomForm > label {
+#createRoomForm>label {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
     color: var(--text-color);
 }
 
-#createRoomForm > label p {
-    width: 15rem;
+#createRoomForm>label p {
+    flex: 2;
     text-align: left;
     color: var(--text-color);
     margin: 0;
+    word-wrap: break-word;
 }
 
-#createRoomForm > label input {
+#createRoomForm>label input {
     flex: 1;
+    min-width: 10rem;
+    display: block;
     padding: 0.75rem;
     border: 2px solid var(--border-color);
     border-radius: 6px;
     font-size: 1rem;
     background: var(--container-bg);
     color: var(--text-color);
+    box-sizing: border-box;
+    margin: 0;
+}
+
+/* Join room form labels with inline layout */
+#joinRoomForm>label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+}
+
+#joinRoomForm>label p {
+    flex: 2;
+    text-align: left;
+    color: var(--text-color);
+    margin: 0;
+    word-wrap: break-word;
+}
+
+#joinRoomForm>label input {
+    flex: 1;
+    min-width: 10rem;
+    display: block;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1rem;
+    background: var(--container-bg);
+    color: var(--text-color);
+    box-sizing: border-box;
+    margin: 0;
 }
 
 .lobby-settings {
@@ -749,7 +802,7 @@ body.dark-mode .wrong-question strong {
 
 .game-header .timer {
     flex: 1;
-    text-align: right;
+    text-align: center;
 }
 
 .question-counter {
@@ -853,11 +906,11 @@ body.dark-mode .wrong-question strong {
         flex-direction: column;
         gap: 1rem;
     }
-    
+
     .timer {
         font-size: 2rem;
     }
-    
+
     .final-leaderboard-item {
         grid-template-columns: 40px 1fr 80px;
         padding: 0.75rem;

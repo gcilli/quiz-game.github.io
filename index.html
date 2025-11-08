@@ -25,7 +25,7 @@
 
         <!-- Main Menu -->
         <div id="main-menu" class="main-menu">
-            <h2 style="color: var(--text-color); margin-bottom: 2rem;">Seleziona modalità di gioco</h2>
+            <h2 style="color: var(--text-color); margin-bottom: 2rem;">Seleziona modalità</h2>
             <div class="mode-buttons">
                 <button id="singleplayer-mode-btn" class="mode-btn">
                     <span class="mode-icon">📝</span>
@@ -33,96 +33,9 @@
                 </button>
                 <button id="multiplayer-mode-btn" class="mode-btn">
                     <span class="mode-icon">🎮</span>
-                    <span class="mode-title">Multiplayer</span>
+                    <span class="mode-title">Multi Player</span>
                 </button>
             </div>
-        </div>
-
-        <!-- Single Player Setup Menu -->
-        <div id="singleplayer-menu" class="category-select" style="display: none;">      
-            <p><strong>Seleziona una o più categorie:</strong></p>
-            <label><input type="checkbox" value="CULTURA_GENERALE" checked> Cultura generale</label>
-            <label><input type="checkbox" value="ATTITUDINALI_LOGICO_DEDUTTIVI" checked> Logico-deduttivi</label>
-            <label><input type="checkbox" value="ATTITUDINALI_LOGICO_MATEMATICI" checked> Logico-matematici</label>
-            <label><input type="checkbox" value="ATTITUDINALI_LOGICO_VERBALI" checked> Logico-verbali</label>
-
-            <hr style="width:100%;text-align:left;margin-left:0">
-
-            <label>
-                <input type="checkbox" id="only-saved-questions"> Solo domande salvate
-            </label>
-
-            <label>
-                <p><strong>Numero di domande:</strong></p>
-                <input id="num-domande" type="number" min="1" max="10000" value="30">
-            </label>
-
-            <label>
-                <p><strong>Timer (minuti):</strong></p>
-                <input id="timer-input" type="number" min="0" max="10000" value="0">
-            </label>
-
-            <button id="start-btn" class="btn" type="button">Inizia quiz</button>
-            <button id="clear-persistent" class="btn" style="background:#dc3545;" type="button">Cancella cronologia</button>
-            <button id="back-to-main-menu-btn" class="btn btn-tertiary" style="margin-bottom: 1rem;">← Menù principale</button>
-        </div>
-
-        <!-- Multiplayer Menu -->
-        <div id="multiplayer-menu" class="multiplayer-menu" style="display: none;">
-            <button id="back-to-main-from-mp-btn" class="btn btn-tertiary" style="margin-bottom: 1rem;">← Menù principale</button>
-            
-            <div class="button-group">
-                <button id="create-room-mp-btn" class="btn btn-primary">Crea Stanza</button>
-                <button id="join-room-mp-btn" class="btn btn-secondary">Unisciti</button>
-            </div>
-        </div>
-
-        <!-- Area quiz -->
-        <div id="quiz" class="quiz-container">
-            <div id="progress"></div>
-            <div class="progress-bar-container">
-                <div id="progress-bar-fill" class="progress-bar-fill"></div>
-            </div>
-            <div class="quiz-header">
-                <button id="back-btn" class="back-btn" type="button">← Menù principale</button>
-                <div class="bookmark-btn-container">
-                    <button id="bookmark-btn" class="bookmark-btn" type="button">⭐</button>
-                </div>
-                <div class="score-timer-container">
-                    <div id="score"></div>
-                    <div id="timer" class="timer"></div>
-                </div>
-            </div>
-            <div id="category"></div>
-            <div id="question" class="question"></div>
-            <div id="answers" class="answers"></div>
-            <div class="navigation-buttons">
-                <button id="prev-btn" class="btn btn-nav" type="button" disabled>← Indietro</button>
-                <button id="next-btn" class="btn btn-nav" type="button" disabled>Avanti →</button>
-            </div>
-        </div>
-
-        <!-- Riepilogo -->
-        <div id="summary" class="summary">
-            <h2>Riepilogo finale</h2>
-            <p id="final-score"></p>
-            <div id="error-list"></div>
-            <h3>Accuratezza nel tempo</h3>
-            <div style="margin-bottom: 1rem; text-align: center;">
-                <label for="accuracy-filter" style="color: var(--text-color); margin-right: 0.5rem;">Mostra:</label>
-                <select id="accuracy-filter"
-                    style="padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color); cursor: pointer;">
-                    <option value="overall">Accuratezza complessiva</option>
-                    <option value="CULTURA_GENERALE">Cultura generale</option>
-                    <option value="ATTITUDINALI_LOGICO_DEDUTTIVI">Logico-deduttivi</option>
-                    <option value="ATTITUDINALI_LOGICO_MATEMATICI">Logico-matematici</option>
-                    <option value="ATTITUDINALI_LOGICO_VERBALI">Logico-verbali</option>
-                </select>
-            </div>
-            <canvas id="accuracy-chart" width="500" height="250"></canvas>
-            <h3>Grafico risultati per categoria</h3>
-            <canvas id="result-chart" width="500" height="300"></canvas>
-            <button id="restart-btn" class="btn" type="button">Torna al menù iniziale</button>
         </div>
     </div>
 
