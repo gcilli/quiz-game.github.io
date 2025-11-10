@@ -6091,11 +6091,11 @@
             ]
         },
         {
-            "domanda": "762) Tutti gli autisti sono prudenti. Paola è una persona intelligente. Le persone intelligenti sono prudenti. Carlo è un autista di autobus.",
+            "domanda": "762) Tutti gli autisti sono prudenti. Paola è una persona intelligente. Le persone intelligenti sono prudenti. Carlo è un autista di autobus. In base alle precedenti affermazioni, quale delle seguenti è necessariamente vera?",
             "risposte": [
-                "base alle precedenti affermazioni, quale delle seguenti è necessariamente vera?",
                 "Paola è una persona prudente",
-                "Carlo è una persona intelligente"
+                "Carlo è una persona intelligente",
+                "Le persone prudenti sono intelligenti"
             ]
         },
         {
@@ -6299,11 +6299,11 @@
             ]
         },
         {
-            "domanda": "788) Marta è più alta di Cinzia; Claudio è più alto di Imma che è più bassa di Alessandra. Cinzia e Alessandra hanno la stessa altezza.",
+            "domanda": "788) Marta è più alta di Cinzia; Claudio è più alto di Imma che è più bassa di Alessandra. Cinzia e Alessandra hanno la stessa altezza. Sulla base delle precedenti affermazioni, è certamente vero che:",
             "risposte": [
-                "la base delle precedenti affermazioni, è certamente vero che:",
                 "Marta è più alta di Imma",
-                "Claudio è il più alto"
+                "Claudio è il più alto",
+                "Cinzia è più bassa di Imma"
             ]
         },
         {
@@ -6635,11 +6635,11 @@
             ]
         },
         {
-            "domanda": "830) Paola si è appena laureata in ingegneria. Tutti gli ingegneri sono portati per la matematica. Il Signor Bianchi insegna Fisica al liceo.",
+            "domanda": "830) Paola si è appena laureata in ingegneria. Tutti gli ingegneri sono portati per la matematica. Il Signor Bianchi insegna Fisica al liceo. Tutti gli insegnanti di materie scientifiche sono portati per la matematica. Paola vorrebbe diventare un'insegnante. In base alle precedenti affermazioni, quale delle seguenti è necessariamente vera?",
             "risposte": [
-                "ti gli insegnanti di materie scientifiche sono portati per la matematica. Paola vorrebbe diventare un'insegnante. In base alle precedenti affermazioni, quale delle seguenti è necessariamente vera?",
                 "Il Signor Bianchi è portato per la matematica",
-                "Paola non è portata per la matematica"
+                "Paola non è portata per la matematica",
+                "Il Signor Bianchi è un ingegnere"
             ]
         },
         {
@@ -9541,11 +9541,11 @@
             ]
         },
         {
-            "domanda": "1193) Luigi deve trasportare 8 scatoloni che pesano 5 kg l'uno, 5 scatoloni che pesano 2 kg l'uno e 3 scatoloni che pesano 10 kg l'uno.",
+            "domanda": "1193) Luigi deve trasportare 8 scatoloni che pesano 5 kg l'uno, 5 scatoloni che pesano 2 kg l'uno e 3 scatoloni che pesano 10 kg l'uno. Qual è il peso medio degli scatoloni?",
             "risposte": [
-                "l è il peso medio degli scatoloni?",
-                "5 kg.",
-                "6 kg."
+                "5 Kg.",
+                "6 kg.",
+                "5,5 kg."
             ]
         },
         {
@@ -11733,11 +11733,11 @@
             ]
         },
         {
-            "domanda": "1467) In una fabbrica lavorano 50 operai. Il 40% percepisce gli assegni familiari. Il 50% dei rimanenti percepisce un assegno d'invalidità.",
+            "domanda": "1467) In una fabbrica lavorano 50 operai. Il 40% percepisce gli assegni familiari. Il 50% dei rimanenti percepisce un assegno d'invalidità. Quanti operai non percepiscono alcun assegno?",
             "risposte": [
-                "nti operai non percepiscono alcun assegno?",
                 "15.",
-                "6."
+                "6.",
+                "12."
             ]
         },
         {
