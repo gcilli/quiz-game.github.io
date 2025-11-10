@@ -295,35 +295,8 @@ class MultiplayerQuiz {
     });
   }
 
-  // Submit an answer
-  async submitAnswer(answerIndex) {
-    if (this.hasAnswered) {
-      return;
-    }
-
-    this.hasAnswered = true;
-    
-    const currentQuestion = this.questions[this.currentQuestionIndex];
-    const isCorrect = answerIndex === currentQuestion.rispostaCorretta;
-
-    // Write answer with server timestamp first
-    const answerRef = this.roomRef.child(`answers/${this.currentQuestionIndex}/${this.playerId}`);
-    await answerRef.set({
-      answer: answerIndex,
-      correct: isCorrect,
-      timestamp: firebase.database.ServerValue.TIMESTAMP
-    });
-
-    // Now read back both timestamps to calculate elapsed time using server clock
-    const questionStartSnapshot = await this.roomRef.child('questionStartTime').once('value');
-    const answerSnapshot = await answerRef.once('value');
-    
-    const questionStartTime = questionStartSnapshot.val();
-    const answerTime = answerSnapshot.val().timestamp;
-    
-    // Calculate elapsed time using server timestamps (both from same clock)
-    const timeElapsed = Math.max(0.1, (answerTime - questionStartTime) / 1000); // seconds, minimum 0.1s
-
+  // Helper function to calculate and update score
+  async calculateAndUpdateScore(answerRef, isCorrect, timeElapsed) {
     // Calculate score
     let points = 0;
     // Speed ratio from 0.1 (slowest) to 1.0 (fastest) - always has some impact
@@ -351,6 +324,46 @@ class MultiplayerQuiz {
     await this.roomRef.child('scores/' + this.playerId).set(currentScore + points);
 
     return { isCorrect, points, timeElapsed };
+  }
+
+  // Submit an answer
+  async submitAnswer(answerIndex) {
+    if (this.hasAnswered) {
+      return;
+    }
+
+    this.hasAnswered = true;
+    
+    const currentQuestion = this.questions[this.currentQuestionIndex];
+    const isCorrect = answerIndex === currentQuestion.rispostaCorretta;
+
+    // Write answer with server timestamp first
+    const answerRef = this.roomRef.child(`answers/${this.currentQuestionIndex}/${this.playerId}`);
+    await answerRef.set({
+      answer: answerIndex,
+      correct: isCorrect,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    // Now read back both timestamps to calculate elapsed time using server clock
+    const questionStartSnapshot = await this.roomRef.child('questionStartTime').once('value');
+    const answerSnapshot = await answerRef.once('value');
+    
+    const questionStartTime = questionStartSnapshot.val();
+    const answerTime = answerSnapshot.val().timestamp;
+    
+    // Validate timestamps
+    if (!questionStartTime || questionStartTime === 0) {
+      console.error('questionStartTime is null or 0, using fallback calculation');
+      // Fallback: use local timer duration as approximate time
+      const timeElapsed = Math.max(0.1, this.timerDuration - (this.timeRemaining || this.timerDuration));
+      return await this.calculateAndUpdateScore(answerRef, isCorrect, timeElapsed);
+    }
+    
+    // Calculate elapsed time using server timestamps (both from same clock)
+    const timeElapsed = Math.max(0.1, (answerTime - questionStartTime) / 1000); // seconds, minimum 0.1s
+
+    return await this.calculateAndUpdateScore(answerRef, isCorrect, timeElapsed);
   }
 
   // Move to next question (host only)

@@ -12,3 +12,8 @@ Thumbs.db
 # Backup files
 *.bak
 *~
+
+# Environment variables (if using a build system)
+.env
+.env.local
+.env.production

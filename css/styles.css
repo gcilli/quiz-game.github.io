@@ -676,6 +676,27 @@ body.dark-mode .wrong-question strong {
     transition: background-color 5000s ease-in-out 0s;
 }
 
+/* General autofill styling for all inputs (including those not in form-group) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--text-color) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--container-bg) inset !important;
+    transition: background-color 5000s ease-in-out 0s;
+    caret-color: var(--text-color);
+}
+
+/* Dark mode specific autofill override */
+.dark-mode input:-webkit-autofill,
+.dark-mode input:-webkit-autofill:hover,
+.dark-mode input:-webkit-autofill:focus,
+.dark-mode input:-webkit-autofill:active {
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-box-shadow: 0 0 0 1000px #1a1a1a inset !important;
+    caret-color: #ffffff;
+}
+
 .form-group input::placeholder {
     color: var(--text-secondary);
     opacity: 0.6;
