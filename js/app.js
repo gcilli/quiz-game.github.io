@@ -763,6 +763,59 @@ function tornaAlMenu() {
     quizInCorso = false;
 }
 
+// Load and apply quiz settings
+function loadQuizSettings() {
+    const savedSettings = SafeStorage.get("quizSettings");
+    
+    // Default settings
+    const defaults = {
+        categories: CATEGORIE, // All categories selected
+        numDomande: 30,
+        timer: 0,
+        onlySavedQuestions: false,
+        selectionStrategy: 'adaptive'
+    };
+    
+    const settings = savedSettings || defaults;
+    
+    // Apply category selections
+    if (categoryMenu) {
+        const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']");
+        checkboxes.forEach(cb => {
+            if (cb.value === "only-saved-questions") {
+                return; // Skip this one, handled separately
+            }
+            cb.checked = settings.categories.includes(cb.value);
+        });
+    }
+    
+    // Apply other settings
+    if (numDomandeSelect) numDomandeSelect.value = settings.numDomande;
+    if (timerInput) timerInput.value = settings.timer;
+    if (onlySavedCheckbox) onlySavedCheckbox.checked = settings.onlySavedQuestions;
+    if (selectionStrategySelect) selectionStrategySelect.value = settings.selectionStrategy;
+}
+
+// Save quiz settings
+function saveQuizSettings() {
+    if (!categoryMenu) return;
+    
+    const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']:checked");
+    const categories = Array.from(checkboxes)
+        .map(cb => cb.value)
+        .filter(val => val !== "only-saved-questions");
+    
+    const settings = {
+        categories: categories,
+        numDomande: numDomandeSelect ? parseInt(numDomandeSelect.value) : 30,
+        timer: timerInput ? parseInt(timerInput.value) : 0,
+        onlySavedQuestions: onlySavedCheckbox ? onlySavedCheckbox.checked : false,
+        selectionStrategy: selectionStrategySelect ? selectionStrategySelect.value : 'adaptive'
+    };
+    
+    SafeStorage.set("quizSettings", settings);
+}
+
 // Event Listeners
 function initializeEventListeners() {
     // Main menu navigation (only on index.html)
@@ -875,7 +928,11 @@ function initializeEventListeners() {
             SafeStorage.remove("sessionHistory");
             SafeStorage.remove("savedQuestions");
             SafeStorage.remove("questionStats");
-            alert("Cronologia e domande salvate cancellate.");
+            SafeStorage.remove("quizSettings");
+            alert("Cronologia, domande salvate e impostazioni preferite cancellate.");
+            
+            // Reload settings to apply defaults
+            loadQuizSettings();
         });
     }
 
@@ -923,9 +980,22 @@ function initializeEventListeners() {
             }
 
             event.preventDefault();
+            saveQuizSettings(); // Save settings before starting quiz
             avviaQuiz();
         });
     }
+
+    // Save settings when changed
+    if (categoryMenu) {
+        const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']");
+        checkboxes.forEach(cb => {
+            cb.addEventListener("change", saveQuizSettings);
+        });
+    }
+    if (numDomandeSelect) numDomandeSelect.addEventListener("change", saveQuizSettings);
+    if (timerInput) timerInput.addEventListener("change", saveQuizSettings);
+    if (selectionStrategySelect) selectionStrategySelect.addEventListener("change", saveQuizSettings);
+    if (onlySavedCheckbox) onlySavedCheckbox.addEventListener("change", saveQuizSettings);
 
     const accuracyFilter = document.getElementById("accuracy-filter");
     if (accuracyFilter) {
@@ -974,6 +1044,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     initDomElements();
     initializeEventListeners();
     initializeChartListeners();
+    
+    // Load saved quiz settings or apply defaults
+    loadQuizSettings();
 
     if (!SafeStorage.isAvailable()) {
         console.warn("localStorage non disponibile — verrà usato storage in-memory.");
