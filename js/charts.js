@@ -345,10 +345,11 @@ function disegnaGraficoRisultati() {
     const rightMargin = 20;
     const availableWidth = canvas.width - leftMargin - rightMargin;
     
-    // Calcola larghezza di ogni gruppo (2 barre + gap)
+    // Calcola larghezza di ogni gruppo (2 barre + piccolo gap interno + gap tra categorie)
     const groupWidth = availableWidth / numCategorie;
-    const gap = Math.min(groupWidth * 0.15, 20); // 15% del gruppo o max 20px
-    const larghezzaBarra = (groupWidth - gap) / 2;
+    const categoryGap = Math.min(groupWidth * 0.2, 15); // Gap tra categorie (20% o max 15px)
+    const innerGap = Math.min(groupWidth * 0.05, 5); // Gap interno tra le due barre (5% o max 5px)
+    const larghezzaBarra = (groupWidth - categoryGap - innerGap) / 2;
     
     const maxAltezza = Math.max(...window.CATEGORIE.map(cat => conteggi[cat].corrette + conteggi[cat].errate), 1);
 
@@ -371,22 +372,23 @@ function disegnaGraficoRisultati() {
         ctx.fillStyle = colorCorrette;
         ctx.fillRect(x, canvas.height - altezzaCorrette - bottomMargin, larghezzaBarra, altezzaCorrette);
 
-        // Barre errate - scala in base all'altezza disponibile
+        // Barre errate - scala in base all'altezza disponibile (con piccolo gap interno)
         const altezzaErrate = (conteggi[cat].errate / maxAltezza) * maxBarHeight;
         ctx.fillStyle = colorErrate;
-        ctx.fillRect(x + larghezzaBarra + gap, canvas.height - altezzaErrate - bottomMargin, larghezzaBarra, altezzaErrate);
+        ctx.fillRect(x + larghezzaBarra + innerGap, canvas.height - altezzaErrate - bottomMargin, larghezzaBarra, altezzaErrate);
 
-        // Etichette categoria - centrate rispetto al gruppo di barre
+        // Etichette categoria - centrate rispetto alle due barre (non a tutto il groupWidth)
         ctx.fillStyle = colorTesto;
         // Font size scala con larghezza barra, min 8px, max 12px
         const labelFontSize = Math.max(8, Math.min(10, larghezzaBarra * 0.8));
         ctx.font = labelFontSize + "px Arial";
         ctx.textAlign = "center";
         const labelText = cat.replace("CULTURA_", "").replace("ATTITUDINALI_LOGICO_", "").replace("_", " ");
-        const centerX = x + groupWidth / 2;
+        // Center between the two bars of this category
+        const centerX = x + larghezzaBarra + innerGap / 2;
         
         // Se la label è troppo larga, spezza su due righe
-        const maxLabelWidth = groupWidth - 4; // Piccolo margine
+        const maxLabelWidth = (larghezzaBarra * 2 + innerGap); // Larghezza delle due barre + gap interno
         const labelWidth = ctx.measureText(labelText).width;
         
         if (labelWidth > maxLabelWidth && labelText.includes(" ")) {
@@ -419,7 +421,7 @@ function disegnaGraficoRisultati() {
         const topPositionErrate = altezzaErrate > 0 
             ? canvas.height - altezzaErrate - bottomMargin - 10 // 10px sopra la barra
             : canvas.height - bottomMargin - 10; // Alla base se barra = 0
-        ctx.fillText(textErrate, x + larghezzaBarra + gap + larghezzaBarra / 2, topPositionErrate);
+        ctx.fillText(textErrate, x + larghezzaBarra + innerGap + larghezzaBarra / 2, topPositionErrate);
     });
 
     // Asse Y
