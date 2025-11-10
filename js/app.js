@@ -9,11 +9,11 @@ let tempoRimanente = 0;
 let timerInterval = null;
 let domande = {};
 
-// DOM Elements
-let categoryMenu, startBtn, quizContainer, categoryEl, questionEl, answersEl;
-let nextBtn, scoreEl, summaryEl, finalScoreEl, progressEl, errorListEl;
+// DOM elements
+let categoryMenu, startBtn, quizContainer, categoryEl, questionEl, answersEl, nextBtn;
+let scoreEl, summaryEl, finalScoreEl, progressEl, errorListEl, progressBarFill;
 let restartBtn, backBtn, numDomandeSelect, timerInput, timerEl;
-let clearPersistentBtn, bookmarkBtn, onlySavedCheckbox, prevBtn;
+let clearPersistentBtn, bookmarkBtn, onlySavedCheckbox, prevBtn, selectionStrategySelect;
 
 // Quiz state
 let selectedCategories = [];
@@ -29,6 +29,7 @@ let domandeUsate = [];
 let quizHistory = [];
 let currentQuestionIndex = -1;
 let userActivated = false;
+let selectionStrategy = 'random';
 
 // Load questions from JSON
 async function loadQuestions() {
@@ -95,6 +96,8 @@ function initDomElements() {
     bookmarkBtn = document.getElementById("bookmark-btn");
     onlySavedCheckbox = document.getElementById("only-saved-questions");
     prevBtn = document.getElementById("prev-btn");
+    selectionStrategySelect = document.getElementById("selection-strategy");
+    progressBarFill = document.getElementById("progress-bar-fill");
 }
 
 // Helper per mostrare/nascondere sezioni
@@ -130,6 +133,11 @@ function avviaQuiz() {
     numDomande = parseInt(numDomandeSelect.value);
     tempoTotale = parseInt(timerInput.value) * 60;
     tempoRimanente = tempoTotale;
+    
+    // Get selection strategy
+    if (selectionStrategySelect) {
+        selectionStrategy = selectionStrategySelect.value;
+    }
 
     if (selectedCategories.length === 0) {
         alert("Seleziona almeno una categoria per iniziare il quiz!");
@@ -175,6 +183,261 @@ function aggiornaTimer() {
     } else {
         timerEl.classList.remove("warning");
     }
+}
+
+// Question statistics tracking
+function getQuestionStats(questionId) {
+    const stats = SafeStorage.get("questionStats") || {};
+    return stats[questionId] || {
+        timesShown: 0,
+        timesCorrect: 0,
+        timesWrong: 0,
+        lastShown: 0
+    };
+}
+
+function updateQuestionStats(questionId, wasCorrect) {
+    const stats = SafeStorage.get("questionStats") || {};
+    if (!stats[questionId]) {
+        stats[questionId] = {
+            timesShown: 0,
+            timesCorrect: 0,
+            timesWrong: 0,
+            lastShown: 0
+        };
+    }
+    
+    stats[questionId].timesShown++;
+    if (wasCorrect) {
+        stats[questionId].timesCorrect++;
+    } else {
+        stats[questionId].timesWrong++;
+    }
+    stats[questionId].lastShown = Date.now();
+    
+    SafeStorage.set("questionStats", stats);
+}
+
+function calculateQuestionWeight(questionId, questionData) {
+    if (selectionStrategy === 'random') {
+        return 1; // All questions have equal weight
+    }
+    
+    // Adaptive strategy
+    const stats = getQuestionStats(questionId);
+    
+    // Never seen before gets highest priority
+    if (stats.timesShown === 0) {
+        return 10;
+    }
+    
+    // Calculate success rate
+    const successRate = stats.timesCorrect / stats.timesShown;
+    
+    // Lower success rate = higher weight (more likely to be shown)
+    // Weight formula: inverse of success rate, scaled
+    let weight = 1 / (successRate + 0.1); // Add 0.1 to avoid division by zero
+    
+    // Boost weight for questions not shown recently
+    const daysSinceLastShown = (Date.now() - stats.lastShown) / (1000 * 60 * 60 * 24);
+    if (daysSinceLastShown > 5) {
+        weight *= 1.5; // 50% boost if not shown in 5 days
+    }
+    
+    return weight;
+}
+
+function selectWeightedQuestion(availableQuestions) {
+    if (selectionStrategy === 'random') {
+        // Pure random selection
+        return availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+    }
+    
+    // Weighted selection for adaptive strategy
+    const weights = availableQuestions.map(q => calculateQuestionWeight(q.id, q));
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    
+    let random = Math.random() * totalWeight;
+    for (let i = 0; i < availableQuestions.length; i++) {
+        random -= weights[i];
+        if (random <= 0) {
+            return availableQuestions[i];
+        }
+    }
+    
+    // Fallback
+    return availableQuestions[availableQuestions.length - 1];
+}
+
+// Statistics screen functions
+function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
+    const allStats = SafeStorage.get("questionStats") || {};
+    const statsArray = [];
+    
+    // Gather all stats with question details
+    for (const [questionId, stats] of Object.entries(allStats)) {
+        const [category, questionText] = questionId.split('::');
+        
+        // Apply category filter
+        if (filterCategory !== 'all' && category !== filterCategory) {
+            continue;
+        }
+        
+        const successRate = stats.timesShown > 0 
+            ? (stats.timesCorrect / stats.timesShown) * 100 
+            : 0;
+        
+        statsArray.push({
+            id: questionId,
+            category,
+            question: questionText,
+            ...stats,
+            successRate
+        });
+    }
+    
+    // Sort based on selected order
+    statsArray.sort((a, b) => {
+        switch (sortOrder) {
+            case 'worst':
+                return a.successRate - b.successRate;
+            case 'best':
+                return b.successRate - a.successRate;
+            case 'most-shown':
+                return b.timesShown - a.timesShown;
+            case 'least-shown':
+                return a.timesShown - b.timesShown;
+            default:
+                return 0;
+        }
+    });
+    
+    // Populate summary cards
+    const summary = document.getElementById('stats-summary');
+    const totalQuestions = statsArray.length;
+    
+    // Calculate total questions in database
+    let totalQuestionsInDb = 0;
+    for (const cat of CATEGORIE) {
+        if (domande[cat]) {
+            totalQuestionsInDb += domande[cat].length;
+        }
+    }
+    
+    const questionsSeenPercentage = totalQuestionsInDb > 0 ? ((totalQuestions / totalQuestionsInDb) * 100).toFixed(1) : 0;
+    const totalAttempts = statsArray.reduce((sum, s) => sum + s.timesShown, 0);
+    const totalCorrect = statsArray.reduce((sum, s) => sum + s.timesCorrect, 0);
+    const overallSuccessRate = totalAttempts > 0 ? ((totalCorrect / totalAttempts) * 100).toFixed(1) : 0;
+    
+    summary.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-card-label">Domande viste</div>
+            <div class="stat-card-value">${questionsSeenPercentage}%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-label">Domande totali</div>
+            <div class="stat-card-value">${totalAttempts}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-label">Accuratezza media</div>
+            <div class="stat-card-value">${overallSuccessRate}%</div>
+        </div>
+    `;
+    
+    // Populate question list
+    const statsList = document.getElementById('stats-list');
+    if (statsArray.length === 0) {
+        statsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Nessuna statistica disponibile. Inizia un quiz per vedere i tuoi progressi!</p>';
+        return;
+    }
+    
+    statsList.innerHTML = statsArray.map((stat, index) => {
+        const successRate = stat.successRate.toFixed(1);
+        let barClass;
+        
+        // Determine bar color
+        if (stat.timesShown === 0) {
+            barClass = 'low';
+        } else if (successRate >= 80) {
+            barClass = 'high';
+        } else if (successRate >= 60) {
+            barClass = 'high';
+        } else if (successRate >= 40) {
+            barClass = 'medium';
+        } else {
+            barClass = 'low';
+        }
+        
+        const categoryName = stat.category.replace(/_/g, ' ').toLowerCase()
+            .replace(/\b\w/g, l => l.toUpperCase());
+        
+        // Find the full question data to get answers
+        let answersHtml = '';
+        if (domande[stat.category]) {
+            const fullQuestion = domande[stat.category].find(q => q.domanda === stat.question);
+            if (fullQuestion && fullQuestion.risposte) {
+                const correctAnswer = fullQuestion.risposte[0];
+                const wrongAnswers = fullQuestion.risposte.slice(1);
+                
+                // Show correct answer first, then wrong answers
+                answersHtml = `
+                    <div class="question-answers" id="answers-${index}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-left: 3px solid #28a745; border-radius: 4px; color: var(--text-color);">
+                            <span style="color: #28a745; font-weight: bold;">✓</span> ${correctAnswer}
+                        </div>
+                        ${wrongAnswers.map(answer => `
+                            <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--container-bg); border-left: 3px solid var(--border-color); border-radius: 4px; color: var(--text-color);">
+                                ${answer}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+        
+        return `
+            <div class="question-stat-item" style="cursor: pointer;" onclick="toggleAnswers(${index})">
+                <div class="question-stat-header">
+                    <div class="question-stat-text">${stat.question}</div>
+                    <span id="toggle-icon-${index}" style="color: var(--text-secondary); font-size: 1.2rem;">▼</span>
+                </div>
+                <div class="question-stat-bar">
+                    <div class="question-stat-bar-fill ${barClass}" style="width: ${Math.max(successRate, stat.timesShown > 0 ? 8 : 0)}%">
+                        ${stat.timesShown > 0 ? successRate + '%' : ''}
+                    </div>
+                </div>
+                <div class="question-stat-details">
+                    <span><strong>Categoria:</strong> ${categoryName}</span>
+                    <span><strong>Viste:</strong> ${stat.timesShown}</span>
+                </div>
+                ${answersHtml}
+            </div>
+        `;
+    }).join('');
+}
+
+function showStatsScreen() {
+    // Hide other screens
+    const setupScreen = document.getElementById('setupScreen');
+    const statsScreen = document.getElementById('stats-screen');
+    const quizScreen = document.getElementById('quiz');
+    const summaryScreen = document.getElementById('summary');
+    
+    if (setupScreen) setupScreen.style.display = 'none';
+    if (quizScreen) quizScreen.style.display = 'none';
+    if (summaryScreen) summaryScreen.style.display = 'none';
+    if (statsScreen) {
+        statsScreen.style.display = 'block';
+        populateStatistics(); // Load with defaults
+    }
+}
+
+function hideStatsScreen() {
+    const setupScreen = document.getElementById('setupScreen');
+    const statsScreen = document.getElementById('stats-screen');
+    
+    if (statsScreen) statsScreen.style.display = 'none';
+    if (setupScreen) setupScreen.style.display = 'block';
 }
 
 function nuovaDomanda() {
@@ -235,7 +498,8 @@ function nuovaDomanda() {
         return;
     }
 
-    const scelta = domandeDisponibili[Math.floor(Math.random() * domandeDisponibili.length)];
+    // Use weighted selection instead of pure random
+    const scelta = selectWeightedQuestion(domandeDisponibili);
     currentCategory = scelta.categoria;
     currentQuestionId = scelta.id;
     const q = scelta.domanda;
@@ -331,7 +595,12 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
     const buttons = answersEl.querySelectorAll("button");
     buttons.forEach(b => b.disabled = true);
 
-    if (risposta === correctAnswer) {
+    const isCorrect = risposta === correctAnswer;
+    
+    // Update question statistics
+    updateQuestionStats(currentQuestionId, isCorrect);
+
+    if (isCorrect) {
         btn.classList.add("correct");
         punteggio++;
 
@@ -594,12 +863,52 @@ function initializeEventListeners() {
 
     if (clearPersistentBtn) {
         clearPersistentBtn.addEventListener("click", () => {
-            if (!confirm("Sei sicuro di voler cancellare tutta la cronologia e le domande salvate? Questa azione non può essere annullata.")) return;
+            const confirmText = prompt("Per confermare l'eliminazione di tutta la cronologia e le domande salvate, scrivi ELIMINA (in maiuscolo):");
+            if (confirmText !== "ELIMINA") {
+                if (confirmText !== null) {
+                    alert("Operazione annullata. Il testo inserito non corrisponde.");
+                }
+                return;
+            }
             SafeStorage.remove("erroriQuiz");
             SafeStorage.remove("corretteQuiz");
             SafeStorage.remove("sessionHistory");
             SafeStorage.remove("savedQuestions");
+            SafeStorage.remove("questionStats");
             alert("Cronologia e domande salvate cancellate.");
+        });
+    }
+
+    // Statistics screen event listeners
+    const viewStatsBtn = document.getElementById("view-stats-btn");
+    if (viewStatsBtn) {
+        viewStatsBtn.addEventListener("click", () => {
+            showStatsScreen();
+        });
+    }
+
+    const backFromStatsBtn = document.getElementById("back-from-stats-btn");
+    if (backFromStatsBtn) {
+        backFromStatsBtn.addEventListener("click", () => {
+            hideStatsScreen();
+        });
+    }
+
+    const statsCategoryFilter = document.getElementById("stats-category-filter");
+    if (statsCategoryFilter) {
+        statsCategoryFilter.addEventListener("change", () => {
+            const filterValue = statsCategoryFilter.value;
+            const sortValue = document.getElementById("stats-sort-order")?.value || 'worst';
+            populateStatistics(filterValue, sortValue);
+        });
+    }
+
+    const statsSortOrder = document.getElementById("stats-sort-order");
+    if (statsSortOrder) {
+        statsSortOrder.addEventListener("change", () => {
+            const filterValue = document.getElementById("stats-category-filter")?.value || 'all';
+            const sortValue = statsSortOrder.value;
+            populateStatistics(filterValue, sortValue);
         });
     }
 
@@ -678,3 +987,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         mostraSezione('main-menu');
     }
 });
+
+// Make toggleAnswers globally accessible for onclick handlers
+window.toggleAnswers = function(index) {
+    const answersDiv = document.getElementById(`answers-${index}`);
+    const toggleIcon = document.getElementById(`toggle-icon-${index}`);
+    
+    if (answersDiv) {
+        if (answersDiv.style.display === 'none') {
+            answersDiv.style.display = 'block';
+            if (toggleIcon) toggleIcon.textContent = '▲';
+        } else {
+            answersDiv.style.display = 'none';
+            if (toggleIcon) toggleIcon.textContent = '▼';
+        }
+    }
+};

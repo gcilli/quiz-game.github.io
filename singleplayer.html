@@ -26,6 +26,14 @@
                 </label>
 
                 <label>
+                    <p><strong>Strategia di selezione:</strong></p>
+                    <select id="selection-strategy">
+                        <option value="random">Casuale</option>
+                        <option value="adaptive">Adattiva (focus su domande difficili)</option>
+                    </select>
+                </label>
+
+                <label>
                     <p><strong>Numero di domande:</strong></p>
                     <input id="num-domande" type="number" min="1" max="10000" value="30">
                 </label>
@@ -36,9 +44,44 @@
                 </label>
 
                 <button id="start-btn" class="btn" type="button">Inizia quiz</button>
+                <button id="view-stats-btn" class="btn" style="background:#17a2b8;">Visualizza Statistiche</button>
                 <button id="clear-persistent" class="btn" style="background:#dc3545;" type="button">Cancella cronologia</button>
                 <button id="back-to-main-btn" class="btn btn-tertiary">← Menù principale</button>
             </div>
+        </div>
+
+        <!-- Question Statistics Screen -->
+        <div id="stats-screen" class="screen" style="display: none;">
+            <h2>📊 Statistiche Domande</h2>
+            <p style="color: var(--text-color); margin-bottom: 1rem;">Panoramica delle tue performance per domanda</p>
+            
+            <div style="margin-bottom: 1rem;">
+                <label>
+                    <p><strong>Filtra per categoria:</strong></p>
+                    <select id="stats-category-filter" style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
+                        <option value="all">Tutte le categorie</option>
+                        <option value="CULTURA_GENERALE">Cultura generale</option>
+                        <option value="ATTITUDINALI_LOGICO_DEDUTTIVI">Logico-deduttivi</option>
+                        <option value="ATTITUDINALI_LOGICO_MATEMATICI">Logico-matematici</option>
+                        <option value="ATTITUDINALI_LOGICO_VERBALI">Logico-verbali</option>
+                    </select>
+                </label>
+                <label style="margin-top: 1rem;">
+                    <p><strong>Ordina per:</strong></p>
+                    <select id="stats-sort-order" style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
+                        <option value="worst">Peggiori performance</option>
+                        <option value="best">Migliori performance</option>
+                        <option value="most-shown">Più viste</option>
+                        <option value="least-shown">Meno viste</option>
+                    </select>
+                </label>
+            </div>
+            
+            <div id="stats-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; margin-bottom: 2rem;"></div>
+            
+            <div id="stats-list" style="max-height: 60vh; overflow-y: auto;"></div>
+            
+            <button id="back-from-stats-btn" class="btn btn-tertiary" style="margin-top: 1rem;">← Torna al menu</button>
         </div>
 
         <!-- Area quiz -->
