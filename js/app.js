@@ -398,7 +398,7 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
         return `
             <div class="question-stat-item" style="cursor: pointer;" onclick="toggleAnswers(${index})">
                 <div class="question-stat-header">
-                    <div class="question-stat-text">${stat.question}</div>
+                    <div class="question-stat-text" id="question-text-${index}">${stat.question}</div>
                     <span id="toggle-icon-${index}" style="color: var(--text-secondary); font-size: 1.2rem;">▼</span>
                 </div>
                 <div class="question-stat-bar">
@@ -1065,14 +1065,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 window.toggleAnswers = function(index) {
     const answersDiv = document.getElementById(`answers-${index}`);
     const toggleIcon = document.getElementById(`toggle-icon-${index}`);
+    const questionText = document.getElementById(`question-text-${index}`);
     
     if (answersDiv) {
         if (answersDiv.style.display === 'none') {
             answersDiv.style.display = 'block';
             if (toggleIcon) toggleIcon.textContent = '▲';
+            if (questionText) questionText.classList.add('expanded');
         } else {
             answersDiv.style.display = 'none';
             if (toggleIcon) toggleIcon.textContent = '▼';
+            if (questionText) questionText.classList.remove('expanded');
         }
     }
 };

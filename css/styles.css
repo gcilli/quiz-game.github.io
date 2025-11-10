@@ -1008,6 +1008,13 @@ input:-webkit-autofill:active {
     -webkit-box-orient: vertical;
 }
 
+.question-stat-text.expanded {
+    display: block;
+    overflow: visible;
+    text-overflow: unset;
+    -webkit-line-clamp: unset;
+}
+
 .question-stat-badge {
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
