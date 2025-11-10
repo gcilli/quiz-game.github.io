@@ -79,7 +79,37 @@
             
             <div id="stats-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; margin-bottom: 2rem;"></div>
             
-            <div id="stats-list" style="max-height: 60vh; overflow-y: auto;"></div>
+            <h3 id="dettaglio-domande-toggle" style="color: var(--text-color); margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                <span id="dettaglio-domande-icon">▶</span> Dettaglio domande
+            </h3>
+            <div id="stats-list" style="max-height: 60vh; overflow-y: auto; display: none;"></div>
+
+            <!-- Charts section -->
+            <h3 id="accuratezza-tempo-toggle" style="color: var(--text-color); margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                <span id="accuratezza-tempo-icon">▶</span> Accuratezza nel tempo
+            </h3>
+            <div id="accuratezza-tempo-content" style="display: none;">
+                <div style="margin-bottom: 1rem; text-align: center;">
+                    <label for="accuracy-filter">
+                        <p><strong>Filtra per:</strong></p>
+                        <select id="accuracy-filter" style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
+                            <option value="overall">Accuratezza complessiva</option>
+                            <option value="CULTURA_GENERALE">Cultura generale</option>
+                            <option value="ATTITUDINALI_LOGICO_DEDUTTIVI">Logico-deduttivi</option>
+                            <option value="ATTITUDINALI_LOGICO_MATEMATICI">Logico-matematici</option>
+                            <option value="ATTITUDINALI_LOGICO_VERBALI">Logico-verbali</option>
+                        </select>
+                    </label>
+                </div>
+                <canvas id="accuracy-chart" height="250"></canvas>
+            </div>
+            
+            <h3 id="risultati-categoria-toggle" style="color: var(--text-color); margin-top: 1rem; margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                <span id="risultati-categoria-icon">▶</span> Risultati per categoria
+            </h3>
+            <div id="risultati-categoria-content" style="display: none;">
+                <canvas id="result-chart" height="300"></canvas>
+            </div>
             
             <button id="back-from-stats-btn" class="btn btn-tertiary" style="margin-top: 1rem;">← Torna al menu</button>
         </div>
@@ -114,21 +144,6 @@
             <h2>Riepilogo finale</h2>
             <p id="final-score"></p>
             <div id="error-list"></div>
-            <h3>Accuratezza nel tempo</h3>
-            <div style="margin-bottom: 1rem; text-align: center;">
-                <label for="accuracy-filter" style="color: var(--text-color); margin-right: 0.5rem;">Mostra:</label>
-                <select id="accuracy-filter"
-                    style="padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color); cursor: pointer;">
-                    <option value="overall">Accuratezza complessiva</option>
-                    <option value="CULTURA_GENERALE">Cultura generale</option>
-                    <option value="ATTITUDINALI_LOGICO_DEDUTTIVI">Logico-deduttivi</option>
-                    <option value="ATTITUDINALI_LOGICO_MATEMATICI">Logico-matematici</option>
-                    <option value="ATTITUDINALI_LOGICO_VERBALI">Logico-verbali</option>
-                </select>
-            </div>
-            <canvas id="accuracy-chart" width="500" height="250"></canvas>
-            <h3>Grafico risultati per categoria</h3>
-            <canvas id="result-chart" width="500" height="300"></canvas>
             <button id="restart-btn" class="btn" type="button">Torna al menù iniziale</button>
         </div>
     </div>

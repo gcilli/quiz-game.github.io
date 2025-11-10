@@ -316,11 +316,19 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
     const summary = document.getElementById('stats-summary');
     const totalQuestions = statsArray.length;
     
-    // Calculate total questions in database
+    // Calculate total questions in database (considering filter)
     let totalQuestionsInDb = 0;
-    for (const cat of CATEGORIE) {
-        if (domande[cat]) {
-            totalQuestionsInDb += domande[cat].length;
+    if (filterCategory === 'all') {
+        // Count all categories
+        for (const cat of CATEGORIE) {
+            if (domande[cat]) {
+                totalQuestionsInDb += domande[cat].length;
+            }
+        }
+    } else {
+        // Count only filtered category
+        if (domande[filterCategory]) {
+            totalQuestionsInDb = domande[filterCategory].length;
         }
     }
     
@@ -429,7 +437,109 @@ function showStatsScreen() {
     if (statsScreen) {
         statsScreen.style.display = 'block';
         populateStatistics(); // Load with defaults
+        
+        // Draw charts in stats screen
+        if (typeof disegnaGraficoAccuratezza === 'function') {
+            disegnaGraficoAccuratezza();
+        }
+        if (typeof disegnaGraficoRisultati === 'function') {
+            disegnaGraficoRisultati();
+        }
+        
+        // Initialize dettaglio domande toggle if not already done
+        initDettaglioDomandeToggle();
+        initAccuratezzaTempoToggle();
+        initRisultatiCategoriaToggle();
     }
+}
+
+function initDettaglioDomandeToggle() {
+    const toggle = document.getElementById('dettaglio-domande-toggle');
+    const icon = document.getElementById('dettaglio-domande-icon');
+    const statsList = document.getElementById('stats-list');
+    
+    if (!toggle || !icon || !statsList) return;
+    
+    // Remove existing listener if any
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    
+    // Get updated references
+    const updatedToggle = document.getElementById('dettaglio-domande-toggle');
+    const updatedIcon = document.getElementById('dettaglio-domande-icon');
+    const updatedStatsList = document.getElementById('stats-list');
+    
+    updatedToggle.addEventListener('click', () => {
+        if (updatedStatsList.style.display === 'none') {
+            updatedStatsList.style.display = 'block';
+            updatedIcon.textContent = '▼';
+        } else {
+            updatedStatsList.style.display = 'none';
+            updatedIcon.textContent = '▶';
+        }
+    });
+}
+
+function initAccuratezzaTempoToggle() {
+    const toggle = document.getElementById('accuratezza-tempo-toggle');
+    const icon = document.getElementById('accuratezza-tempo-icon');
+    const content = document.getElementById('accuratezza-tempo-content');
+    
+    if (!toggle || !icon || !content) return;
+    
+    // Remove existing listener if any
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    
+    // Get updated references
+    const updatedToggle = document.getElementById('accuratezza-tempo-toggle');
+    const updatedIcon = document.getElementById('accuratezza-tempo-icon');
+    const updatedContent = document.getElementById('accuratezza-tempo-content');
+    
+    updatedToggle.addEventListener('click', () => {
+        if (updatedContent.style.display === 'none') {
+            updatedContent.style.display = 'block';
+            updatedIcon.textContent = '▼';
+            // Redraw chart when expanded
+            if (typeof disegnaGraficoAccuratezza === 'function') {
+                setTimeout(() => disegnaGraficoAccuratezza(), 50);
+            }
+        } else {
+            updatedContent.style.display = 'none';
+            updatedIcon.textContent = '▶';
+        }
+    });
+}
+
+function initRisultatiCategoriaToggle() {
+    const toggle = document.getElementById('risultati-categoria-toggle');
+    const icon = document.getElementById('risultati-categoria-icon');
+    const content = document.getElementById('risultati-categoria-content');
+    
+    if (!toggle || !icon || !content) return;
+    
+    // Remove existing listener if any
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    
+    // Get updated references
+    const updatedToggle = document.getElementById('risultati-categoria-toggle');
+    const updatedIcon = document.getElementById('risultati-categoria-icon');
+    const updatedContent = document.getElementById('risultati-categoria-content');
+    
+    updatedToggle.addEventListener('click', () => {
+        if (updatedContent.style.display === 'none') {
+            updatedContent.style.display = 'block';
+            updatedIcon.textContent = '▼';
+            // Redraw chart when expanded
+            if (typeof disegnaGraficoRisultati === 'function') {
+                setTimeout(() => disegnaGraficoRisultati(), 50);
+            }
+        } else {
+            updatedContent.style.display = 'none';
+            updatedIcon.textContent = '▶';
+        }
+    });
 }
 
 function hideStatsScreen() {
@@ -610,6 +720,16 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
             rispostaCorretta: correctAnswer,
             categoria: currentCategory
         });
+        
+        // Update persistent storage immediately for real-time chart updates
+        const correttePersistenti = SafeStorage.get("corretteQuiz") || [];
+        correttePersistenti.push({
+            domanda: domandaCorrente.domanda,
+            rispostaData: risposta,
+            rispostaCorretta: correctAnswer,
+            categoria: currentCategory
+        });
+        SafeStorage.set("corretteQuiz", correttePersistenti);
     } else {
         btn.classList.add("wrong");
         const corretto = Array.from(buttons).find(b => b.textContent === correctAnswer);
@@ -621,6 +741,16 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
             rispostaCorretta: correctAnswer,
             categoria: currentCategory
         });
+        
+        // Update persistent storage immediately for real-time chart updates
+        const erroriPersistenti = SafeStorage.get("erroriQuiz") || [];
+        erroriPersistenti.push({
+            domanda: domandaCorrente.domanda,
+            rispostaData: risposta,
+            rispostaCorretta: correctAnswer,
+            categoria: currentCategory
+        });
+        SafeStorage.set("erroriQuiz", erroriPersistenti);
     }
 
     if (currentQuestionIndex >= 0 && currentQuestionIndex < quizHistory.length) {
@@ -632,6 +762,13 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
     aggiornaPunteggio();
     aggiornaProgressBar();
     nextBtn.disabled = false;
+    
+    // Update result chart in real-time if stats screen is visible
+    const statsScreen = document.getElementById('stats-screen');
+    if (statsScreen && statsScreen.style.display === 'block' && typeof disegnaGraficoRisultati === 'function') {
+        // Only update the results chart (per-category), not the accuracy chart (per-session)
+        disegnaGraficoRisultati();
+    }
 }
 
 function aggiornaPunteggio() {
@@ -670,14 +807,8 @@ function mostraRiepilogo(scaduto = false) {
         });
     }
 
-    const erroriPersistenti = SafeStorage.get("erroriQuiz") || [];
-    erroriPersistenti.push(...errori);
-    SafeStorage.set("erroriQuiz", erroriPersistenti);
-
-    const correttePersistenti = SafeStorage.get("corretteQuiz") || [];
-    correttePersistenti.push(...corrette);
-    SafeStorage.set("corretteQuiz", correttePersistenti);
-
+    // Data already saved incrementally in selezionaRisposta, no need to duplicate here
+    // Just save the session history for the accuracy chart
     const sessionHistory = SafeStorage.get("sessionHistory") || [];
     const accuracy = numDomande > 0 ? (punteggio / numDomande) * 100 : 0;
 
@@ -698,9 +829,6 @@ function mostraRiepilogo(scaduto = false) {
         categoryAccuracy: categoryAccuracy
     });
     SafeStorage.set("sessionHistory", sessionHistory);
-
-    disegnaGraficoAccuratezza();
-    disegnaGraficoRisultati();
 
     if (punteggio === numDomande && numDomande > 0) {
         lanceConfetti();
@@ -916,7 +1044,7 @@ function initializeEventListeners() {
 
     if (clearPersistentBtn) {
         clearPersistentBtn.addEventListener("click", () => {
-            const confirmText = prompt("Per confermare l'eliminazione di tutta la cronologia e le domande salvate, scrivi ELIMINA (in maiuscolo):");
+            const confirmText = prompt("Per confermare l'eliminazione di tutta la cronologia, le domande salvate e le impostazioni preferite, scrivi ELIMINA (in maiuscolo):");
             if (confirmText !== "ELIMINA") {
                 if (confirmText !== null) {
                     alert("Operazione annullata. Il testo inserito non corrisponde.");

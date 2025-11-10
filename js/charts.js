@@ -4,8 +4,23 @@
 let chartPoints = [];
 let activeTooltip = null;
 
+// Helper function to set canvas size based on container
+function setCanvasSize(canvas, heightRatio = 0.5) {
+    const container = canvas.parentElement;
+    const containerWidth = container.clientWidth;
+    
+    // Set canvas internal resolution
+    canvas.width = containerWidth;
+    canvas.height = containerWidth * heightRatio;
+}
+
 function disegnaGraficoAccuratezza() {
     const canvas = document.getElementById("accuracy-chart");
+    if (!canvas) return;
+    
+    // Set canvas size to match container width
+    setCanvasSize(canvas, 0.65); // 65% of width for height (increased from 0.5)
+    
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -57,7 +72,7 @@ function disegnaGraficoAccuratezza() {
     const gridColor = isDarkMode ? "#444" : "#ddd";
     const textColor = isDarkMode ? "#e0e0e0" : "#222";
 
-    const padding = 50;
+    const padding = 0.15 * canvas.width;
     const chartWidth = canvas.width - padding * 2;
     const chartHeight = canvas.height - padding * 2;
     const maxSessions = recentData.length;
@@ -69,7 +84,7 @@ function disegnaGraficoAccuratezza() {
         const y = padding + (chartHeight / 4) * i;
         ctx.beginPath();
         ctx.moveTo(padding, y);
-        ctx.lineTo(canvas.width - padding, y);
+        ctx.lineTo(padding + chartWidth, y);
         ctx.stroke();
 
         // Etichette asse Y (percentuale)
@@ -118,11 +133,13 @@ function disegnaGraficoAccuratezza() {
             ctx.fill();
 
             // Memorizza le coordinate dei punti per il click
+            const sessionIndex = sessionHistory.length - maxSessions + i;
             chartPoints.push({
                 x: x,
                 y: y,
                 accuracy: accuracy,
-                sessionNumber: sessionHistory.length - maxSessions + i + 1
+                sessionNumber: sessionIndex + 1,
+                totalQuestions: recentSessions[sessionIndex].totalQuestions
             });
 
             // Mostra percentuale sopra il punto solo se il totale storico è 12 o meno
@@ -154,15 +171,15 @@ function disegnaGraficoAccuratezza() {
 
         // Mostra sempre la prima e l'ultima etichetta, più quelle a intervalli regolari
         if (maxSessions === 1 || i === 0 || i === maxSessions - 1 || i % step === 0) {
-            ctx.fillText(`#${sessionNumber}`, x, canvas.height - padding + 20);
+            ctx.fillText(`#${sessionNumber}`, x, canvas.height - padding*0.6);
         }
     });
 
-    // Titoli assi
+    // Titoli assi - posizionato più in basso per evitare sovrapposizioni
     ctx.fillStyle = textColor;
     ctx.font = "14px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("Sessione", canvas.width / 2, canvas.height - 10);
+    ctx.fillText("Sessione", canvas.width / 2, canvas.height - padding *0.3);
 }
 
 function handleChartInteraction(clientX, clientY) {
@@ -226,15 +243,17 @@ function mostraTooltip(canvas, point) {
     // Contenuto del tooltip
     const text = `${point.accuracy.toFixed(1)}%`;
     const sessionText = `Sessione #${point.sessionNumber}`;
+    const questionsText = `${point.totalQuestions} domande`;
 
     // Misura il testo per dimensionare il tooltip
     ctx.font = "14px Arial";
     const textWidth = Math.max(
         ctx.measureText(text).width,
-        ctx.measureText(sessionText).width
+        ctx.measureText(sessionText).width,
+        ctx.measureText(questionsText).width
     );
     const tooltipWidth = textWidth + 20;
-    const tooltipHeight = 50;
+    const tooltipHeight = 70; // Aumentato per 3 righe
 
     // Posiziona il tooltip sopra il punto, ma evita che esca dal canvas
     let tooltipX = point.x - tooltipWidth / 2;
@@ -261,10 +280,13 @@ function mostraTooltip(canvas, point) {
     ctx.fillStyle = isDarkMode ? "#e0e0e0" : "#222";
     ctx.font = "12px Arial";
     ctx.textAlign = "center";
-    ctx.fillText(sessionText, tooltipX + tooltipWidth / 2, tooltipY + 20);
+    ctx.fillText(sessionText, tooltipX + tooltipWidth / 2, tooltipY + 18);
 
     ctx.font = "bold 16px Arial";
     ctx.fillText(text, tooltipX + tooltipWidth / 2, tooltipY + 38);
+
+    ctx.font = "12px Arial";
+    ctx.fillText(questionsText, tooltipX + tooltipWidth / 2, tooltipY + 56);
 
     // Evidenzia il punto selezionato
     const lineColor = isDarkMode ? "#4a9eff" : "#007bff";
@@ -279,6 +301,11 @@ function mostraTooltip(canvas, point) {
 
 function disegnaGraficoRisultati() {
     const canvas = document.getElementById("result-chart");
+    if (!canvas) return;
+    
+    // Set canvas size to match container width
+    setCanvasSize(canvas, 0.6); // 60% of width for height
+    
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -312,9 +339,17 @@ function disegnaGraficoRisultati() {
     contaRisposte(erroriPersistenti, 'errate');
     contaRisposte(correttePersistenti, 'corrette');
 
-    // Disegna barre
-    const larghezzaBarra = 38;
-    const gap = 40;
+    // Disegna barre - calcoli responsivi basati sulla larghezza del canvas
+    const numCategorie = window.CATEGORIE.length;
+    const leftMargin = 50;
+    const rightMargin = 20;
+    const availableWidth = canvas.width - leftMargin - rightMargin;
+    
+    // Calcola larghezza di ogni gruppo (2 barre + gap)
+    const groupWidth = availableWidth / numCategorie;
+    const gap = Math.min(groupWidth * 0.15, 20); // 15% del gruppo o max 20px
+    const larghezzaBarra = (groupWidth - gap) / 2;
+    
     const maxAltezza = Math.max(...window.CATEGORIE.map(cat => conteggi[cat].corrette + conteggi[cat].errate), 1);
 
     // Colori adattivi per dark mode
@@ -323,46 +358,75 @@ function disegnaGraficoRisultati() {
     const colorErrate = isDarkMode ? "#8b4a4a" : "#dc3545";
     const colorTesto = isDarkMode ? "#e0e0e0" : "#222";
 
+    // Riserva spazio per i numeri sopra le barre e le etichette sotto
+    const topMargin = 25; // Spazio per i numeri sopra
+    const bottomMargin = 30; // Spazio per le etichette sotto
+    const maxBarHeight = canvas.height - topMargin - bottomMargin;
+
     window.CATEGORIE.forEach((cat, i) => {
-        const x = i * (larghezzaBarra * 2 + gap) + 50;
+        const x = leftMargin + (i * groupWidth);
 
-        // Barre corrette
-        const altezzaCorrette = (conteggi[cat].corrette / maxAltezza) * 200;
+        // Barre corrette - scala in base all'altezza disponibile
+        const altezzaCorrette = (conteggi[cat].corrette / maxAltezza) * maxBarHeight;
         ctx.fillStyle = colorCorrette;
-        ctx.fillRect(x, canvas.height - altezzaCorrette - 30, larghezzaBarra, altezzaCorrette);
+        ctx.fillRect(x, canvas.height - altezzaCorrette - bottomMargin, larghezzaBarra, altezzaCorrette);
 
-        // Barre errate
-        const altezzaErrate = (conteggi[cat].errate / maxAltezza) * 200;
+        // Barre errate - scala in base all'altezza disponibile
+        const altezzaErrate = (conteggi[cat].errate / maxAltezza) * maxBarHeight;
         ctx.fillStyle = colorErrate;
-        ctx.fillRect(x + larghezzaBarra, canvas.height - altezzaErrate - 30, larghezzaBarra, altezzaErrate);
+        ctx.fillRect(x + larghezzaBarra + gap, canvas.height - altezzaErrate - bottomMargin, larghezzaBarra, altezzaErrate);
 
-        // Etichette categoria - centrate rispetto alle barre
+        // Etichette categoria - centrate rispetto al gruppo di barre
         ctx.fillStyle = colorTesto;
-        ctx.font = "12px Arial";
+        // Font size scala con larghezza barra, min 8px, max 12px
+        const labelFontSize = Math.max(8, Math.min(10, larghezzaBarra * 0.8));
+        ctx.font = labelFontSize + "px Arial";
         ctx.textAlign = "center";
         const labelText = cat.replace("CULTURA_", "").replace("ATTITUDINALI_LOGICO_", "").replace("_", " ");
-        const centerX = x + larghezzaBarra;
-        ctx.fillText(labelText, centerX, canvas.height - 10);
+        const centerX = x + groupWidth / 2;
+        
+        // Se la label è troppo larga, spezza su due righe
+        const maxLabelWidth = groupWidth - 4; // Piccolo margine
+        const labelWidth = ctx.measureText(labelText).width;
+        
+        if (labelWidth > maxLabelWidth && labelText.includes(" ")) {
+            // Spezza la label in due parole
+            const words = labelText.split(" ");
+            const line1 = words[0];
+            const line2 = words.slice(1).join(" ");
+            ctx.fillText(line1, centerX, canvas.height - 18);
+            ctx.fillText(line2, centerX, canvas.height - 6);
+        } else {
+            ctx.fillText(labelText, centerX, canvas.height - 10);
+        }
 
         // Conteggi sopra barre
-        ctx.font = "14px Arial";
+        // Font size scala con larghezza barra, min 8px, max 14px
+        const numberFontSize = Math.max(8, Math.min(14, larghezzaBarra * 0.9));
+        ctx.font = numberFontSize + "px Arial";
         ctx.fillStyle = colorTesto;
         ctx.textAlign = "center";
 
-        // numero corrette - centrato sulla barra
+        // numero corrette - sempre sopra la barra con spazio garantito
         let textCorrette = conteggi[cat].corrette.toString();
-        ctx.fillText(textCorrette, x + larghezzaBarra / 2, canvas.height - altezzaCorrette - 35);
+        const topPositionCorrette = altezzaCorrette > 0 
+            ? canvas.height - altezzaCorrette - bottomMargin - 10 // 10px sopra la barra
+            : canvas.height - bottomMargin - 10; // Alla base se barra = 0
+        ctx.fillText(textCorrette, x + larghezzaBarra / 2, topPositionCorrette);
 
-        // numero errate - centrato sulla barra
+        // numero errate - sempre sopra la barra con spazio garantito
         let textErrate = conteggi[cat].errate.toString();
-        ctx.fillText(textErrate, x + larghezzaBarra + larghezzaBarra / 2, canvas.height - altezzaErrate - 35);
+        const topPositionErrate = altezzaErrate > 0 
+            ? canvas.height - altezzaErrate - bottomMargin - 10 // 10px sopra la barra
+            : canvas.height - bottomMargin - 10; // Alla base se barra = 0
+        ctx.fillText(textErrate, x + larghezzaBarra + gap + larghezzaBarra / 2, topPositionErrate);
     });
 
     // Asse Y
     ctx.strokeStyle = colorTesto;
     ctx.beginPath();
-    ctx.moveTo(40, 10);
-    ctx.lineTo(40, canvas.height - 30);
+    ctx.moveTo(40, topMargin);
+    ctx.lineTo(40, canvas.height - bottomMargin);
     ctx.stroke();
 }
 
@@ -386,4 +450,21 @@ function initializeChartListeners() {
             event.preventDefault();
         }
     }, { passive: false });
+    
+    // Redraw charts on window resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            const statsScreen = document.getElementById('stats-screen');
+            if (statsScreen && statsScreen.style.display === 'block') {
+                if (typeof disegnaGraficoAccuratezza === 'function') {
+                    disegnaGraficoAccuratezza();
+                }
+                if (typeof disegnaGraficoRisultati === 'function') {
+                    disegnaGraficoRisultati();
+                }
+            }
+        }, 250); // Debounce resize events
+    });
 }
