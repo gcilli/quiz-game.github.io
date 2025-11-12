@@ -216,14 +216,120 @@ function updateQuestionStats(questionId, wasCorrect) {
     stats[questionId].lastShown = Date.now();
     
     SafeStorage.set("questionStats", stats);
+    
+    // Note: Don't clear probability cache here - it's only used in statistics screen
+    // and will be recalculated when statistics screen is opened
 }
 
-function calculateQuestionWeight(questionId, questionData) {
+function calculateQuestionWeight(questionId, questionData, cachedStats, cachedSavedQuestions) {
     if (selectionStrategy === 'random') {
         return 1; // All questions have equal weight
     }
     
     // Adaptive strategy
+    const stats = cachedStats[questionId] || {
+        timesShown: 0,
+        timesCorrect: 0,
+        timesWrong: 0,
+        lastShown: 0
+    };
+    
+    // Never seen before gets highest priority
+    if (stats.timesShown === 0) {
+        return 10;
+    }
+    
+    // Calculate success rate
+    const successRate = stats.timesCorrect / stats.timesShown;
+    
+    // Lower success rate = higher weight (more likely to be shown)
+    // Weight formula: inverse of success rate, scaled
+    let weight = 1 / (successRate + 0.1); // Add 0.1 to avoid division by zero
+    
+    // Boost weight for questions not shown recently
+    const daysSinceLastShown = (Date.now() - stats.lastShown) / (1000 * 60 * 60 * 24);
+    if (daysSinceLastShown > 5) {
+        weight *= 1.5; // 50% boost if not shown in 5 days
+    }
+    
+    // Boost bookmarked questions (2x multiplier)
+    if (cachedSavedQuestions.includes(questionId)) {
+        weight *= 2.0; // 100% boost for bookmarked questions
+    }
+    
+    return weight;
+}
+
+function selectWeightedQuestion(availableQuestions, cachedStats, cachedSavedQuestions) {
+    if (selectionStrategy === 'random') {
+        // Pure random selection
+        return availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+    }
+    
+    // Weighted selection for adaptive strategy
+    const weights = availableQuestions.map(q => calculateQuestionWeight(q.id, q, cachedStats, cachedSavedQuestions));
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    
+    let random = Math.random() * totalWeight;
+    for (let i = 0; i < availableQuestions.length; i++) {
+        random -= weights[i];
+        if (random <= 0) {
+            return availableQuestions[i];
+        }
+    }
+    
+    // Fallback
+    return availableQuestions[availableQuestions.length - 1];
+}
+
+// Cache for probability calculations (to avoid recalculating for every question)
+// Cache for probability calculations (to avoid recalculating for every question)
+let probabilityCache = null;
+
+// Calculate all probabilities at once (much faster than individual calculations)
+function calculateAllProbabilities() {
+    if (probabilityCache) {
+        return probabilityCache;
+    }
+    const allQuestions = [];
+    // Gather all questions
+    CATEGORIE.forEach(cat => {
+        if (domande[cat]) {
+            domande[cat].forEach(q => {
+                const qId = `${cat}::${q.domanda}`;
+                allQuestions.push({ id: qId, categoria: cat, domanda: q });
+            });
+        }
+    });
+    if (allQuestions.length === 0) {
+        probabilityCache = {};
+        return probabilityCache;
+    }
+    // Calculate all weights at once
+    const weights = allQuestions.map(q => calculateQuestionWeightAdaptive(q.id));
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    // Create probability map
+    const probabilities = {};
+    allQuestions.forEach((q, index) => {
+        probabilities[q.id] = totalWeight > 0 ? ((weights[index] / totalWeight) * 100) : 0;
+    });
+    probabilityCache = probabilities;
+    return probabilities;
+}
+
+// Calculate probability percentage for a question (uses cache)
+function calculateQuestionProbability(questionId, filterCategory = 'all') {
+    const probabilities = calculateAllProbabilities();
+    return probabilities[questionId] || 0;
+}
+
+// Clear probability cache (call this when stats change)
+function clearProbabilityCache() {
+    probabilityCache = null;
+}
+
+// Helper function to calculate weight in adaptive mode (always, regardless of selectionStrategy)
+function calculateQuestionWeightAdaptive(questionId) {
     const stats = getQuestionStats(questionId);
     
     // Never seen before gets highest priority
@@ -244,33 +350,21 @@ function calculateQuestionWeight(questionId, questionData) {
         weight *= 1.5; // 50% boost if not shown in 5 days
     }
     
+    // Boost bookmarked questions (2x multiplier)
+    const savedQuestions = SafeStorage.get("savedQuestions") || [];
+    if (savedQuestions.includes(questionId)) {
+        weight *= 2.0; // 100% boost for bookmarked questions
+    }
+    
     return weight;
-}
-
-function selectWeightedQuestion(availableQuestions) {
-    if (selectionStrategy === 'random') {
-        // Pure random selection
-        return availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
-    }
-    
-    // Weighted selection for adaptive strategy
-    const weights = availableQuestions.map(q => calculateQuestionWeight(q.id, q));
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-    
-    let random = Math.random() * totalWeight;
-    for (let i = 0; i < availableQuestions.length; i++) {
-        random -= weights[i];
-        if (random <= 0) {
-            return availableQuestions[i];
-        }
-    }
-    
-    // Fallback
-    return availableQuestions[availableQuestions.length - 1];
 }
 
 // Statistics screen functions
 function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
+    // Pre-calculate ALL probabilities at once (much faster than individual lookups)
+    const allProbabilities = calculateAllProbabilities();
+    
+    const savedQuestions = SafeStorage.get("savedQuestions") || [];
     const allStats = SafeStorage.get("questionStats") || {};
     const statsArray = [];
     
@@ -286,13 +380,18 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
         const successRate = stats.timesShown > 0 
             ? (stats.timesCorrect / stats.timesShown) * 100 
             : 0;
+
+        const probability = (allProbabilities[questionId] || 0).toFixed(2);
+        const isBookmarked = savedQuestions.includes(questionId);
         
         statsArray.push({
             id: questionId,
             category,
             question: questionText,
             ...stats,
-            successRate
+            successRate,
+            probability,
+            isBookmarked,
         });
     }
     
@@ -307,6 +406,14 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
                 return b.timesShown - a.timesShown;
             case 'least-shown':
                 return a.timesShown - b.timesShown;
+            case 'most-likely':
+                return b.probability - a.probability;
+            case 'least-likely':
+                return a.probability - b.probability;
+            case 'bookmarked':
+                return (b.isBookmarked === a.isBookmarked) ? 0 : b.isBookmarked ? 1 : -1;
+            case 'alphabetical':
+                return a.question.localeCompare(b.question);
             default:
                 return 0;
         }
@@ -356,8 +463,27 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
     const statsList = document.getElementById('stats-list');
     if (statsArray.length === 0) {
         statsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Nessuna statistica disponibile. Inizia un quiz per vedere i tuoi progressi!</p>';
+        // Still populate unseen questions even if no stats yet
+        populateUnseenQuestions(filterCategory);
         return;
     }
+    
+    // Show loading message first
+    statsList.innerHTML = `<p style="text-align: center; padding: 2rem;">Calcolo probabilità...</p>`;
+    
+    // Render immediately - no need for batching since we removed the bottleneck
+    statsList.innerHTML = `<p style="text-align: center; padding: 2rem;">Rendering ${statsArray.length} domande...</p>`;
+    
+    // Small delay to let UI update, then render
+    setTimeout(() => {
+        renderStatsQuestions(statsArray);
+        // Now populate unseen questions
+        populateUnseenQuestions(filterCategory);
+    }, 50);
+}
+
+function renderStatsQuestions(statsArray) {
+    const statsList = document.getElementById('stats-list');
     
     statsList.innerHTML = statsArray.map((stat, index) => {
         const successRate = stat.successRate.toFixed(1);
@@ -417,6 +543,103 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
                 <div class="question-stat-details">
                     <span><strong>Categoria:</strong> ${categoryName}</span>
                     <span><strong>Viste:</strong> ${stat.timesShown}</span>
+                    <span><strong>Probabilità:</strong> ${stat.probability}%</span>
+                    ${stat.isBookmarked ? '<span style="color: gold;">⭐</span>' : ''}
+                </div>
+                ${answersHtml}
+            </div>
+        `;
+    }).join('');
+}
+
+function populateUnseenQuestions(filterCategory = 'all') {
+    const allStats = SafeStorage.get("questionStats") || {};
+    const unseenQuestions = [];
+    const savedQuestions = SafeStorage.get("savedQuestions") || [];
+    
+    // Get categories to check
+    const categories = filterCategory === 'all' ? CATEGORIE : [filterCategory];
+    
+    // Find all questions that have never been shown (don't calculate probabilities yet)
+    categories.forEach(cat => {
+        if (domande[cat]) {
+            domande[cat].forEach(q => {
+                const questionId = `${cat}::${q.domanda}`;
+                const stats = allStats[questionId];
+                
+                // Include if never shown (stats don't exist or timesShown is 0)
+                if (!stats || stats.timesShown === 0) {
+                    const isBookmarked = savedQuestions.includes(questionId);
+                    
+                    unseenQuestions.push({
+                        id: questionId,
+                        category: cat,
+                        question: q.domanda,
+                        answers: q.risposte,
+                        isBookmarked: isBookmarked
+                    });
+                }
+            });
+        }
+    });
+    
+    const unseenList = document.getElementById('unseen-questions-list');
+    
+    if (unseenQuestions.length === 0) {
+        unseenList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Hai già visto tutte le domande disponibili! 🎉</p>';
+        return;
+    }
+    
+    // Show count first
+    unseenList.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Trovate ${unseenQuestions.length} domande non viste. Calcolo probabilità...</p>`;
+    
+    // Use the pre-calculated probabilities (much faster!)
+    const allProbabilities = calculateAllProbabilities();
+    
+    // Assign probabilities (super fast - just lookups)
+    unseenQuestions.forEach(question => {
+        question.probability = (allProbabilities[question.id] || 0).toFixed(2);
+    });
+    
+    // Render immediately
+    setTimeout(() => {
+        renderUnseenQuestions(unseenQuestions);
+    }, 50);
+}
+
+function renderUnseenQuestions(unseenQuestions) {
+    const unseenList = document.getElementById('unseen-questions-list');
+    
+    unseenList.innerHTML = unseenQuestions.map((question, index) => {
+        const categoryName = question.category.replace(/_/g, ' ').toLowerCase()
+            .replace(/\b\w/g, l => l.toUpperCase());
+        
+        const correctAnswer = question.answers[0];
+        const wrongAnswers = question.answers.slice(1);
+        
+        const answersHtml = `
+            <div class="question-answers" id="unseen-answers-${index}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-left: 3px solid #28a745; border-radius: 4px; color: var(--text-color);">
+                    <span style="color: #28a745; font-weight: bold;">✓</span> ${correctAnswer}
+                </div>
+                ${wrongAnswers.map(answer => `
+                    <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--container-bg); border-left: 3px solid var(--border-color); border-radius: 4px; color: var(--text-color);">
+                        ${answer}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        return `
+            <div class="question-stat-item" style="cursor: pointer;" onclick="toggleUnseenAnswers(${index})">
+                <div class="question-stat-header">
+                    <div class="question-stat-text" id="unseen-question-text-${index}">${question.question}</div>
+                    <span id="unseen-toggle-icon-${index}" style="color: var(--text-secondary); font-size: 1.2rem;">▼</span>
+                </div>
+                <div class="question-stat-details">
+                    <span><strong>Categoria:</strong> ${categoryName}</span>
+                    <span><strong>Probabilità:</strong> ${question.probability}%</span>
+                    ${question.isBookmarked ? '<span style="color: gold;">⭐</span>' : ''}
                 </div>
                 ${answersHtml}
             </div>
@@ -436,20 +659,33 @@ function showStatsScreen() {
     if (summaryScreen) summaryScreen.style.display = 'none';
     if (statsScreen) {
         statsScreen.style.display = 'block';
-        populateStatistics(); // Load with defaults
         
-        // Draw charts in stats screen
-        if (typeof disegnaGraficoAccuratezza === 'function') {
-            disegnaGraficoAccuratezza();
-        }
-        if (typeof disegnaGraficoRisultati === 'function') {
-            disegnaGraficoRisultati();
-        }
+        // Show loading indicator
+        const statsList = document.getElementById('stats-list');
+        const unseenList = document.getElementById('unseen-questions-list');
+        if (statsList) statsList.innerHTML = '<p style="text-align: center; padding: 2rem;">Caricamento statistiche...</p>';
+        if (unseenList) unseenList.innerHTML = '<p style="text-align: center; padding: 2rem;">Caricamento...</p>';
         
-        // Initialize dettaglio domande toggle if not already done
-        initDettaglioDomandeToggle();
-        initAccuratezzaTempoToggle();
-        initRisultatiCategoriaToggle();
+        // Defer heavy calculations to avoid blocking UI
+        setTimeout(() => {
+            populateStatistics(); // Load with defaults (now optimized)
+            
+            // Initialize toggle handlers
+            initDettaglioDomandeToggle();
+            initDomandeNonVisteToggle();
+            initAccuratezzaTempoToggle();
+            initRisultatiCategoriaToggle();
+        }, 50);
+        
+        // Draw charts after a brief delay to let UI update
+        setTimeout(() => {
+            if (typeof disegnaGraficoAccuratezza === 'function') {
+                disegnaGraficoAccuratezza();
+            }
+            if (typeof disegnaGraficoRisultati === 'function') {
+                disegnaGraficoRisultati();
+            }
+        }, 100);
     }
 }
 
@@ -475,6 +711,33 @@ function initDettaglioDomandeToggle() {
             updatedIcon.textContent = '▼';
         } else {
             updatedStatsList.style.display = 'none';
+            updatedIcon.textContent = '▶';
+        }
+    });
+}
+
+function initDomandeNonVisteToggle() {
+    const toggle = document.getElementById('domande-non-viste-toggle');
+    const icon = document.getElementById('domande-non-viste-icon');
+    const list = document.getElementById('unseen-questions-list');
+    
+    if (!toggle || !icon || !list) return;
+    
+    // Remove existing listener if any
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    
+    // Get updated references
+    const updatedToggle = document.getElementById('domande-non-viste-toggle');
+    const updatedIcon = document.getElementById('domande-non-viste-icon');
+    const updatedList = document.getElementById('unseen-questions-list');
+    
+    updatedToggle.addEventListener('click', () => {
+        if (updatedList.style.display === 'none') {
+            updatedList.style.display = 'block';
+            updatedIcon.textContent = '▼';
+        } else {
+            updatedList.style.display = 'none';
             updatedIcon.textContent = '▶';
         }
     });
@@ -565,9 +828,16 @@ function nuovaDomanda() {
         return;
     }
 
-    let domandeDisponibili = [];
+    // Cache localStorage reads ONCE at the start (instead of reading hundreds of times)
     const savedQuestions = SafeStorage.get("savedQuestions") || [];
+    const questionStats = SafeStorage.get("questionStats") || {};
     const onlySaved = onlySavedCheckbox.checked;
+    
+    // Convert to Set for O(1) lookup instead of O(n)
+    const domandeUsateSet = new Set(domandeUsate);
+    const savedQuestionsSet = onlySaved ? new Set(savedQuestions) : null;
+
+    let domandeDisponibili = [];
 
     selectedCategories.forEach(cat => {
         if (!domande[cat]) {
@@ -578,11 +848,11 @@ function nuovaDomanda() {
         domande[cat].forEach(q => {
             const domandaId = `${cat}::${q.domanda}`;
 
-            if (onlySaved && !savedQuestions.includes(domandaId)) {
+            if (onlySaved && !savedQuestionsSet.has(domandaId)) {
                 return;
             }
 
-            if (!domandeUsate.includes(domandaId)) {
+            if (!domandeUsateSet.has(domandaId)) {
                 domandeDisponibili.push({ categoria: cat, domanda: q, id: domandaId });
             }
         });
@@ -590,12 +860,13 @@ function nuovaDomanda() {
 
     if (domandeDisponibili.length === 0) {
         domandeUsate = [];
+        domandeUsateSet.clear();
         selectedCategories.forEach(cat => {
             if (!domande[cat]) return;
 
             domande[cat].forEach(q => {
                 const domandaId = `${cat}::${q.domanda}`;
-                if (onlySaved && !savedQuestions.includes(domandaId)) return;
+                if (onlySaved && !savedQuestionsSet.has(domandaId)) return;
                 domandeDisponibili.push({ categoria: cat, domanda: q, id: domandaId });
             });
         });
@@ -608,8 +879,8 @@ function nuovaDomanda() {
         return;
     }
 
-    // Use weighted selection instead of pure random
-    const scelta = selectWeightedQuestion(domandeDisponibili);
+    // Use weighted selection with cached data (no more localStorage reads!)
+    const scelta = selectWeightedQuestion(domandeDisponibili, questionStats, savedQuestions);
     currentCategory = scelta.categoria;
     currentQuestionId = scelta.id;
     const q = scelta.domanda;
@@ -620,7 +891,14 @@ function nuovaDomanda() {
     categoryEl.textContent = currentCategory.replace(/_/g, " ").toLowerCase();
     questionEl.textContent = q.domanda;
 
-    aggiornaBookmarkButton();
+    // Update bookmark button with cached data (avoid extra localStorage read)
+    if (savedQuestions.includes(currentQuestionId)) {
+        bookmarkBtn.classList.add("saved");
+        bookmarkBtn.textContent = "⭐";
+    } else {
+        bookmarkBtn.classList.remove("saved");
+        bookmarkBtn.textContent = "☆";
+    }
 
     // Store the correct answer before shuffling (first answer is correct by default)
     correctAnswer = q.risposte[0];
@@ -641,12 +919,15 @@ function nuovaDomanda() {
 
     prevBtn.disabled = currentQuestionIndex === 0;
 
+    // Batch DOM operations using DocumentFragment (faster than individual appends)
+    const fragment = document.createDocumentFragment();
     risposteMischiate.forEach(r => {
         const btn = document.createElement("button");
         btn.textContent = r;
         btn.addEventListener("click", () => selezionaRisposta(r, btn, q));
-        answersEl.appendChild(btn);
+        fragment.appendChild(btn);
     });
+    answersEl.appendChild(fragment);
 
     aggiornaPunteggio();
     aggiornaProgressBar();
@@ -707,68 +988,72 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
 
     const isCorrect = risposta === correctAnswer;
     
-    // Update question statistics
-    updateQuestionStats(currentQuestionId, isCorrect);
-
+    // Apply visual feedback FIRST (before any localStorage operations)
     if (isCorrect) {
         btn.classList.add("correct");
         punteggio++;
-
-        corrette.push({
-            domanda: domandaCorrente.domanda,
-            rispostaData: risposta,
-            rispostaCorretta: correctAnswer,
-            categoria: currentCategory
-        });
-        
-        // Update persistent storage immediately for real-time chart updates
-        const correttePersistenti = SafeStorage.get("corretteQuiz") || [];
-        correttePersistenti.push({
-            domanda: domandaCorrente.domanda,
-            rispostaData: risposta,
-            rispostaCorretta: correctAnswer,
-            categoria: currentCategory
-        });
-        SafeStorage.set("corretteQuiz", correttePersistenti);
     } else {
         btn.classList.add("wrong");
         const corretto = Array.from(buttons).find(b => b.textContent === correctAnswer);
         if (corretto) corretto.classList.add("correct");
-
-        errori.push({
-            domanda: domandaCorrente.domanda,
-            rispostaData: risposta,
-            rispostaCorretta: correctAnswer,
-            categoria: currentCategory
-        });
-        
-        // Update persistent storage immediately for real-time chart updates
-        const erroriPersistenti = SafeStorage.get("erroriQuiz") || [];
-        erroriPersistenti.push({
-            domanda: domandaCorrente.domanda,
-            rispostaData: risposta,
-            rispostaCorretta: correctAnswer,
-            categoria: currentCategory
-        });
-        SafeStorage.set("erroriQuiz", erroriPersistenti);
     }
 
-    if (currentQuestionIndex >= 0 && currentQuestionIndex < quizHistory.length) {
-        quizHistory[currentQuestionIndex].rispostaData = risposta;
-        quizHistory[currentQuestionIndex].answered = true;
-    }
-
+    // Update UI state immediately
     domandeFatte++;
     aggiornaPunteggio();
     aggiornaProgressBar();
     nextBtn.disabled = false;
     
-    // Update result chart in real-time if stats screen is visible
-    const statsScreen = document.getElementById('stats-screen');
-    if (statsScreen && statsScreen.style.display === 'block' && typeof disegnaGraficoRisultati === 'function') {
-        // Only update the results chart (per-category), not the accuracy chart (per-session)
-        disegnaGraficoRisultati();
-    }
+    // Now do all the heavy lifting in background (after visual feedback is done)
+    setTimeout(() => {
+        // Update question statistics
+        updateQuestionStats(currentQuestionId, isCorrect);
+
+        if (isCorrect) {
+            corrette.push({
+                domanda: domandaCorrente.domanda,
+                rispostaData: risposta,
+                rispostaCorretta: correctAnswer,
+                categoria: currentCategory
+            });
+            
+            const correttePersistenti = SafeStorage.get("corretteQuiz") || [];
+            correttePersistenti.push({
+                domanda: domandaCorrente.domanda,
+                rispostaData: risposta,
+                rispostaCorretta: correctAnswer,
+                categoria: currentCategory
+            });
+            SafeStorage.set("corretteQuiz", correttePersistenti);
+        } else {
+            errori.push({
+                domanda: domandaCorrente.domanda,
+                rispostaData: risposta,
+                rispostaCorretta: correctAnswer,
+                categoria: currentCategory
+            });
+            
+            const erroriPersistenti = SafeStorage.get("erroriQuiz") || [];
+            erroriPersistenti.push({
+                domanda: domandaCorrente.domanda,
+                rispostaData: risposta,
+                rispostaCorretta: correctAnswer,
+                categoria: currentCategory
+            });
+            SafeStorage.set("erroriQuiz", erroriPersistenti);
+        }
+
+        if (currentQuestionIndex >= 0 && currentQuestionIndex < quizHistory.length) {
+            quizHistory[currentQuestionIndex].rispostaData = risposta;
+            quizHistory[currentQuestionIndex].answered = true;
+        }
+        
+        // Update result chart in real-time if stats screen is visible
+        const statsScreen = document.getElementById('stats-screen');
+        if (statsScreen && statsScreen.style.display === 'block' && typeof disegnaGraficoRisultati === 'function') {
+            disegnaGraficoRisultati();
+        }
+    }, 0);
 }
 
 function aggiornaPunteggio() {
@@ -813,11 +1098,13 @@ function mostraRiepilogo(scaduto = false) {
     const accuracy = numDomande > 0 ? (punteggio / numDomande) * 100 : 0;
 
     const categoryAccuracy = {};
+    const categoryQuestionCount = {};
     CATEGORIE.forEach(cat => {
         const catCorrette = corrette.filter(c => c.categoria === cat).length;
         const catErrate = errori.filter(e => e.categoria === cat).length;
         const catTotale = catCorrette + catErrate;
         categoryAccuracy[cat] = catTotale > 0 ? (catCorrette / catTotale) * 100 : null;
+        categoryQuestionCount[cat] = catTotale; // Store actual count of questions per category
     });
 
     sessionHistory.push({
@@ -826,7 +1113,8 @@ function mostraRiepilogo(scaduto = false) {
         totalQuestions: numDomande,
         correctAnswers: punteggio,
         accuracy: accuracy,
-        categoryAccuracy: categoryAccuracy
+        categoryAccuracy: categoryAccuracy,
+        categoryQuestionCount: categoryQuestionCount
     });
     SafeStorage.set("sessionHistory", sessionHistory);
 
@@ -1194,6 +1482,25 @@ window.toggleAnswers = function(index) {
     const answersDiv = document.getElementById(`answers-${index}`);
     const toggleIcon = document.getElementById(`toggle-icon-${index}`);
     const questionText = document.getElementById(`question-text-${index}`);
+    
+    if (answersDiv) {
+        if (answersDiv.style.display === 'none') {
+            answersDiv.style.display = 'block';
+            if (toggleIcon) toggleIcon.textContent = '▲';
+            if (questionText) questionText.classList.add('expanded');
+        } else {
+            answersDiv.style.display = 'none';
+            if (toggleIcon) toggleIcon.textContent = '▼';
+            if (questionText) questionText.classList.remove('expanded');
+        }
+    }
+};
+
+// Make toggleUnseenAnswers globally accessible for onclick handlers
+window.toggleUnseenAnswers = function(index) {
+    const answersDiv = document.getElementById(`unseen-answers-${index}`);
+    const toggleIcon = document.getElementById(`unseen-toggle-icon-${index}`);
+    const questionText = document.getElementById(`unseen-question-text-${index}`);
     
     if (answersDiv) {
         if (answersDiv.style.display === 'none') {
