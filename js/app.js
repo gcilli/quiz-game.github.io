@@ -361,175 +361,180 @@ function calculateQuestionWeightAdaptive(questionId) {
 
 // Statistics screen functions
 function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
-    // Pre-calculate ALL probabilities at once (much faster than individual lookups)
-    const allProbabilities = calculateAllProbabilities();
-    
-    const savedQuestions = SafeStorage.get("savedQuestions") || [];
-    const allStats = SafeStorage.get("questionStats") || {};
-    const statsArray = [];
-    
-    // Gather all stats with question details
-    for (const [questionId, stats] of Object.entries(allStats)) {
-        const [category, questionText] = questionId.split('::');
-        
-        // Apply category filter
-        if (filterCategory !== 'all' && category !== filterCategory) {
-            continue;
-        }
-        
-        const successRate = stats.timesShown > 0 
-            ? (stats.timesCorrect / stats.timesShown) * 100 
-            : 0;
-
-        const probability = (allProbabilities[questionId] || 0)
-        const isBookmarked = savedQuestions.includes(questionId);
-        
-        statsArray.push({
-            id: questionId,
-            category,
-            question: questionText,
-            ...stats,
-            successRate,
-            probability,
-            isBookmarked,
-        });
-    }
-    
-    // Sort based on selected order
-    statsArray.sort((a, b) => {
-        switch (sortOrder) {
-            case 'worst':
-                return a.successRate - b.successRate;
-            case 'best':
-                return b.successRate - a.successRate;
-            case 'most-shown':
-                return b.timesShown - a.timesShown;
-            case 'least-shown':
-                return a.timesShown - b.timesShown;
-            case 'most-likely':
-                return b.probability - a.probability;
-            case 'least-likely':
-                return a.probability - b.probability;
-            case 'bookmarked':
-                return (b.isBookmarked === a.isBookmarked) ? 0 : b.isBookmarked ? 1 : -1;
-            case 'alphabetical':
-                [aQuestionNum,aQuestionBody] = a.question.split(')');
-                [bQuestionNum,bQuestionBody] = b.question.split(')');
-                return Number(aQuestionNum) - Number(bQuestionNum);
-            default:
-                return 0;
-        }
-    });
-    
-    // Populate summary cards
+    // Render summary cards immediately using cached stats
     const summary = document.getElementById('stats-summary');
-    const totalQuestions = statsArray.length;
-    
-    // Calculate total questions in database (considering filter)
+    const allStats = SafeStorage.get("questionStats") || {};
+    let totalAttempts = 0;
+    let totalCorrect = 0;
     let totalQuestionsInDb = 0;
+    let questionsSeen = 0;
     if (filterCategory === 'all') {
-        // Count all categories
         for (const cat of CATEGORIE) {
             if (domande[cat]) {
                 totalQuestionsInDb += domande[cat].length;
             }
         }
     } else {
-        // Count only filtered category
         if (domande[filterCategory]) {
             totalQuestionsInDb = domande[filterCategory].length;
         }
     }
-    
-    const questionsSeenPercentage = totalQuestionsInDb > 0 ? ((totalQuestions / totalQuestionsInDb) * 100).toFixed(1) : 0;
-    const totalAttempts = statsArray.reduce((sum, s) => sum + s.timesShown, 0);
-    const totalCorrect = statsArray.reduce((sum, s) => sum + s.timesCorrect, 0);
+    for (const [questionId, stats] of Object.entries(allStats)) {
+        const [category] = questionId.split('::');
+        if (filterCategory !== 'all' && category !== filterCategory) continue;
+        questionsSeen++;
+        totalAttempts += stats.timesShown;
+        totalCorrect += stats.timesCorrect;
+    }
+    const questionsSeenPercentage = totalQuestionsInDb > 0 ? ((questionsSeen / totalQuestionsInDb) * 100).toFixed(1) : 0;
     const overallSuccessRate = totalAttempts > 0 ? ((totalCorrect / totalAttempts) * 100).toFixed(1) : 0;
-    
+    // Show loading spinner in summary cards and stats list
     summary.innerHTML = `
         <div class="stat-card">
             <div class="stat-card-label">Domande viste</div>
-            <div class="stat-card-value">${questionsSeenPercentage}%</div>
+            <div class="stat-card-value"><span class="spinner"></span></div>
         </div>
         <div class="stat-card">
             <div class="stat-card-label">Domande totali</div>
-            <div class="stat-card-value">${totalAttempts}</div>
+            <div class="stat-card-value"><span class="spinner"></span></div>
         </div>
         <div class="stat-card">
             <div class="stat-card-label">Accuratezza media</div>
-            <div class="stat-card-value">${overallSuccessRate}%</div>
+            <div class="stat-card-value"><span class="spinner"></span></div>
         </div>
     `;
-    
-    // Populate question list
     const statsList = document.getElementById('stats-list');
-    if (statsArray.length === 0) {
-        statsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Nessuna statistica disponibile. Inizia un quiz per vedere i tuoi progressi!</p>';
-        // Still populate unseen questions even if no stats yet
-        populateUnseenQuestions(filterCategory, allProbabilities);
-        return;
-    }
-    
-    // Small delay to let UI update, then render
+    statsList.innerHTML = '<div style="text-align:center;padding:2rem;"><span class="spinner"></span></div>';
+
+    // Now do heavy stats processing asynchronously
     setTimeout(() => {
+        // Update summary cards with real values
+        summary.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-card-label">Domande viste</div>
+                <div class="stat-card-value">${questionsSeenPercentage}%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Domande totali</div>
+                <div class="stat-card-value">${totalAttempts}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Accuratezza media</div>
+                <div class="stat-card-value">${overallSuccessRate}%</div>
+            </div>
+        `;
+        const allProbabilities = calculateAllProbabilities();
+        const savedQuestions = SafeStorage.get("savedQuestions") || [];
+        const statsArray = [];
+        for (const [questionId, stats] of Object.entries(allStats)) {
+            const [category, questionText] = questionId.split('::');
+            if (filterCategory !== 'all' && category !== filterCategory) continue;
+            const successRate = stats.timesShown > 0 
+                ? (stats.timesCorrect / stats.timesShown) * 100 
+                : 0;
+            const probability = (allProbabilities[questionId] || 0)
+            const isBookmarked = savedQuestions.includes(questionId);
+            statsArray.push({
+                id: questionId,
+                category,
+                question: questionText,
+                ...stats,
+                successRate,
+                probability,
+                isBookmarked,
+            });
+        }
+        statsArray.sort((a, b) => {
+            switch (sortOrder) {
+                case 'worst':
+                    return a.successRate - b.successRate;
+                case 'best':
+                    return b.successRate - a.successRate;
+                case 'most-shown':
+                    return b.timesShown - a.timesShown;
+                case 'least-shown':
+                    return a.timesShown - b.timesShown;
+                case 'most-likely':
+                    return b.probability - a.probability;
+                case 'least-likely':
+                    return a.probability - b.probability;
+                case 'bookmarked':
+                    return (b.isBookmarked === a.isBookmarked) ? 0 : b.isBookmarked ? 1 : -1;
+                case 'alphabetical': {
+                    const numA = parseInt(a.question);
+                    const numB = parseInt(b.question);
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        return numA - numB;
+                    }
+                    return a.question.localeCompare(b.question, 'it', { sensitivity: 'base' });
+                }
+                default:
+                    return 0;
+            }
+        });
+        // Populate question list
+        const statsList = document.getElementById('stats-list');
+        if (statsArray.length === 0) {
+            statsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Nessuna statistica disponibile. Inizia un quiz per vedere i tuoi progressi!</p>';
+            populateUnseenQuestions(filterCategory, allProbabilities);
+            return;
+        }
         renderStatsQuestions(statsArray);
-        // Now populate unseen questions
         populateUnseenQuestions(filterCategory, allProbabilities);
-    }, 50);
+    }, 0);
 }
 
 function renderStatsQuestions(statsArray) {
     const statsList = document.getElementById('stats-list');
-    
-    statsList.innerHTML = statsArray.map((stat, index) => {
-        const successRate = stat.successRate.toFixed(1);
-        let barClass;
-        
-        // Determine bar color
-        if (stat.timesShown === 0) {
-            barClass = 'low';
-        } else if (successRate >= 80) {
-            barClass = 'high';
-        } else if (successRate >= 60) {
-            barClass = 'high';
-        } else if (successRate >= 40) {
-            barClass = 'medium';
-        } else {
-            barClass = 'low';
-        }
-        
-        const categoryName = stat.category.replace(/_/g, ' ').toLowerCase()
-            .replace(/\b\w/g, l => l.toUpperCase());
-        
-        // Find the full question data to get answers
-        let answersHtml = '';
-        if (domande[stat.category]) {
-            const fullQuestion = domande[stat.category].find(q => q.domanda === stat.question);
-            if (fullQuestion && fullQuestion.risposte) {
-                const correctAnswer = fullQuestion.risposte[0];
-                const wrongAnswers = fullQuestion.risposte.slice(1);
-                
-                // Show correct answer first, then wrong answers
-                answersHtml = `
-                    <div class="question-answers" id="answers-${index}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-left: 3px solid #28a745; border-radius: 4px; color: var(--text-color);">
-                            <span style="color: #28a745; font-weight: bold;">✓</span> ${correctAnswer}
-                        </div>
-                        ${wrongAnswers.map(answer => `
-                            <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--container-bg); border-left: 3px solid var(--border-color); border-radius: 4px; color: var(--text-color);">
-                                ${answer}
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
+    const BATCH_SIZE = 20;
+    statsList.innerHTML = '';
+    let rendered = 0;
+    function renderBatch() {
+        const fragment = document.createDocumentFragment();
+        for (let i = rendered; i < Math.min(rendered + BATCH_SIZE, statsArray.length); i++) {
+            const stat = statsArray[i];
+            const successRate = stat.successRate.toFixed(1);
+            let barClass;
+            if (stat.timesShown === 0) {
+                barClass = 'low';
+            } else if (successRate >= 80) {
+                barClass = 'high';
+            } else if (successRate >= 60) {
+                barClass = 'high';
+            } else if (successRate >= 40) {
+                barClass = 'medium';
+            } else {
+                barClass = 'low';
             }
-        }
-        
-        return `
-            <div class="question-stat-item" style="cursor: pointer;" onclick="toggleAnswers(${index})">
+            const categoryName = stat.category.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+            let answersHtml = '';
+            if (domande[stat.category]) {
+                const fullQuestion = domande[stat.category].find(q => q.domanda === stat.question);
+                if (fullQuestion && fullQuestion.risposte) {
+                    const correctAnswer = fullQuestion.risposte[0];
+                    const wrongAnswers = fullQuestion.risposte.slice(1);
+                    answersHtml = `
+                        <div class="question-answers" id="answers-${i}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                            <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-left: 3px solid #28a745; border-radius: 4px; color: var(--text-color);">
+                                <span style="color: #28a745; font-weight: bold;">✓</span> ${correctAnswer}
+                            </div>
+                            ${wrongAnswers.map(answer => `
+                                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--container-bg); border-left: 3px solid var(--border-color); border-radius: 4px; color: var(--text-color);">
+                                    ${answer}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            }
+            const div = document.createElement('div');
+            div.className = 'question-stat-item';
+            div.style.cursor = 'pointer';
+            div.setAttribute('onclick', `toggleAnswers(${i})`);
+            div.innerHTML = `
                 <div class="question-stat-header">
-                    <div class="question-stat-text" id="question-text-${index}">${stat.question}</div>
-                    <span id="toggle-icon-${index}" style="color: var(--text-secondary); font-size: 1.2rem;">▼</span>
+                    <div class="question-stat-text" id="question-text-${i}">${stat.question}</div>
+                    <span id="toggle-icon-${i}" style="color: var(--text-secondary); font-size: 1.2rem;">▼</span>
                 </div>
                 <div class="question-stat-bar">
                     <div class="question-stat-bar-fill ${barClass}" style="width: ${Math.max(successRate, stat.timesShown > 0 ? 8 : 0)}%">
@@ -543,9 +548,28 @@ function renderStatsQuestions(statsArray) {
                     ${stat.isBookmarked ? '<span style="color: gold;">⭐</span>' : ''}
                 </div>
                 ${answersHtml}
-            </div>
-        `;
-    }).join('');
+            `;
+            fragment.appendChild(div);
+        }
+        statsList.appendChild(fragment);
+        rendered += BATCH_SIZE;
+        if (rendered < statsArray.length) {
+            let spinner = document.getElementById('stats-list-spinner');
+            if (!spinner) {
+                spinner = document.createElement('div');
+                spinner.id = 'stats-list-spinner';
+                spinner.innerHTML = '<span class="spinner"></span>';
+                spinner.style.textAlign = 'center';
+                spinner.style.padding = '1rem';
+                statsList.appendChild(spinner);
+            }
+            setTimeout(renderBatch, 30);
+        } else {
+            const spinner = document.getElementById('stats-list-spinner');
+            if (spinner) spinner.remove();
+        }
+    }
+    renderBatch();
 }
 
 function populateUnseenQuestions(filterCategory = 'all', allProbabilities = {}) {
@@ -597,32 +621,36 @@ function populateUnseenQuestions(filterCategory = 'all', allProbabilities = {}) 
 
 function renderUnseenQuestions(unseenQuestions, allProbabilities) {
     const unseenList = document.getElementById('unseen-questions-list');
-    
-    unseenList.innerHTML = unseenQuestions.map((question, index) => {
-        const categoryName = question.category.replace(/_/g, ' ').toLowerCase()
-            .replace(/\b\w/g, l => l.toUpperCase());
-        
-        const correctAnswer = question.answers[0];
-        const wrongAnswers = question.answers.slice(1);
-        
-        const answersHtml = `
-            <div class="question-answers" id="unseen-answers-${index}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-left: 3px solid #28a745; border-radius: 4px; color: var(--text-color);">
-                    <span style="color: #28a745; font-weight: bold;">✓</span> ${correctAnswer}
-                </div>
-                ${wrongAnswers.map(answer => `
-                    <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--container-bg); border-left: 3px solid var(--border-color); border-radius: 4px; color: var(--text-color);">
-                        ${answer}
+    const BATCH_SIZE = 20;
+    unseenList.innerHTML = '';
+    let rendered = 0;
+    function renderBatch() {
+        const fragment = document.createDocumentFragment();
+        for (let i = rendered; i < Math.min(rendered + BATCH_SIZE, unseenQuestions.length); i++) {
+            const question = unseenQuestions[i];
+            const categoryName = question.category.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+            const correctAnswer = question.answers[0];
+            const wrongAnswers = question.answers.slice(1);
+            const answersHtml = `
+                <div class="question-answers" id="unseen-answers-${i}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                    <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-left: 3px solid #28a745; border-radius: 4px; color: var(--text-color);">
+                        <span style="color: #28a745; font-weight: bold;">✓</span> ${correctAnswer}
                     </div>
-                `).join('')}
-            </div>
-        `;
-        
-        return `
-            <div class="question-stat-item" style="cursor: pointer;" onclick="toggleUnseenAnswers(${index})">
+                    ${wrongAnswers.map(answer => `
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--container-bg); border-left: 3px solid var(--border-color); border-radius: 4px; color: var(--text-color);">
+                            ${answer}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            const div = document.createElement('div');
+            div.className = 'question-stat-item';
+            div.style.cursor = 'pointer';
+            div.setAttribute('onclick', `toggleUnseenAnswers(${i})`);
+            div.innerHTML = `
                 <div class="question-stat-header">
-                    <div class="question-stat-text" id="unseen-question-text-${index}">${question.question}</div>
-                    <span id="unseen-toggle-icon-${index}" style="color: var(--text-secondary); font-size: 1.2rem;">▼</span>
+                    <div class="question-stat-text" id="unseen-question-text-${i}">${question.question}</div>
+                    <span id="unseen-toggle-icon-${i}" style="color: var(--text-secondary); font-size: 1.2rem;">▼</span>
                 </div>
                 <div class="question-stat-details">
                     <span><strong>Categoria:</strong> ${categoryName}</span>
@@ -630,9 +658,28 @@ function renderUnseenQuestions(unseenQuestions, allProbabilities) {
                     ${question.isBookmarked ? '<span style="color: gold;">⭐</span>' : ''}
                 </div>
                 ${answersHtml}
-            </div>
-        `;
-    }).join('');
+            `;
+            fragment.appendChild(div);
+        }
+        unseenList.appendChild(fragment);
+        rendered += BATCH_SIZE;
+        if (rendered < unseenQuestions.length) {
+            let spinner = document.getElementById('unseen-list-spinner');
+            if (!spinner) {
+                spinner = document.createElement('div');
+                spinner.id = 'unseen-list-spinner';
+                spinner.innerHTML = '<span class="spinner"></span>';
+                spinner.style.textAlign = 'center';
+                spinner.style.padding = '1rem';
+                unseenList.appendChild(spinner);
+            }
+            setTimeout(renderBatch, 30);
+        } else {
+            const spinner = document.getElementById('unseen-list-spinner');
+            if (spinner) spinner.remove();
+        }
+    }
+    renderBatch();
 }
 
 function showStatsScreen() {

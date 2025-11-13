@@ -1,3 +1,24 @@
+/* Spinner for loading states */
+.spinner {
+    display: inline-block;
+    width: 1.5em;
+    height: 1.5em;
+    border: 3px solid #ccc;
+    border-top: 3px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Optional: Center spinner in stat cards */
+.stat-card-value .spinner {
+    margin: 0 auto;
+}
 :root {
     --primary: #007bff;
     --bg: #f4f4f9;
