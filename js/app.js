@@ -381,7 +381,7 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
             ? (stats.timesCorrect / stats.timesShown) * 100 
             : 0;
 
-        const probability = (allProbabilities[questionId] || 0).toFixed(2);
+        const probability = (allProbabilities[questionId] || 0)
         const isBookmarked = savedQuestions.includes(questionId);
         
         statsArray.push({
@@ -413,7 +413,9 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
             case 'bookmarked':
                 return (b.isBookmarked === a.isBookmarked) ? 0 : b.isBookmarked ? 1 : -1;
             case 'alphabetical':
-                return a.question.localeCompare(b.question);
+                [aQuestionNum,aQuestionBody] = a.question.split(')');
+                [bQuestionNum,bQuestionBody] = b.question.split(')');
+                return Number(aQuestionNum) - Number(bQuestionNum);
             default:
                 return 0;
         }
@@ -464,21 +466,15 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
     if (statsArray.length === 0) {
         statsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Nessuna statistica disponibile. Inizia un quiz per vedere i tuoi progressi!</p>';
         // Still populate unseen questions even if no stats yet
-        populateUnseenQuestions(filterCategory);
+        populateUnseenQuestions(filterCategory, allProbabilities);
         return;
     }
-    
-    // Show loading message first
-    statsList.innerHTML = `<p style="text-align: center; padding: 2rem;">Calcolo probabilità...</p>`;
-    
-    // Render immediately - no need for batching since we removed the bottleneck
-    statsList.innerHTML = `<p style="text-align: center; padding: 2rem;">Rendering ${statsArray.length} domande...</p>`;
     
     // Small delay to let UI update, then render
     setTimeout(() => {
         renderStatsQuestions(statsArray);
         // Now populate unseen questions
-        populateUnseenQuestions(filterCategory);
+        populateUnseenQuestions(filterCategory, allProbabilities);
     }, 50);
 }
 
@@ -543,7 +539,7 @@ function renderStatsQuestions(statsArray) {
                 <div class="question-stat-details">
                     <span><strong>Categoria:</strong> ${categoryName}</span>
                     <span><strong>Viste:</strong> ${stat.timesShown}</span>
-                    <span><strong>Probabilità:</strong> ${stat.probability}%</span>
+                    <span><strong>Probabilità:</strong> ${stat.probability.toFixed(3)}%</span>
                     ${stat.isBookmarked ? '<span style="color: gold;">⭐</span>' : ''}
                 </div>
                 ${answersHtml}
@@ -552,7 +548,7 @@ function renderStatsQuestions(statsArray) {
     }).join('');
 }
 
-function populateUnseenQuestions(filterCategory = 'all') {
+function populateUnseenQuestions(filterCategory = 'all', allProbabilities = {}) {
     const allStats = SafeStorage.get("questionStats") || {};
     const unseenQuestions = [];
     const savedQuestions = SafeStorage.get("savedQuestions") || [];
@@ -593,21 +589,13 @@ function populateUnseenQuestions(filterCategory = 'all') {
     // Show count first
     unseenList.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Trovate ${unseenQuestions.length} domande non viste. Calcolo probabilità...</p>`;
     
-    // Use the pre-calculated probabilities (much faster!)
-    const allProbabilities = calculateAllProbabilities();
-    
-    // Assign probabilities (super fast - just lookups)
-    unseenQuestions.forEach(question => {
-        question.probability = (allProbabilities[question.id] || 0).toFixed(2);
-    });
-    
     // Render immediately
     setTimeout(() => {
-        renderUnseenQuestions(unseenQuestions);
+        renderUnseenQuestions(unseenQuestions, allProbabilities);
     }, 50);
 }
 
-function renderUnseenQuestions(unseenQuestions) {
+function renderUnseenQuestions(unseenQuestions, allProbabilities) {
     const unseenList = document.getElementById('unseen-questions-list');
     
     unseenList.innerHTML = unseenQuestions.map((question, index) => {
@@ -638,7 +626,7 @@ function renderUnseenQuestions(unseenQuestions) {
                 </div>
                 <div class="question-stat-details">
                     <span><strong>Categoria:</strong> ${categoryName}</span>
-                    <span><strong>Probabilità:</strong> ${question.probability}%</span>
+                    <span><strong>Probabilità:</strong> ${allProbabilities[question.id].toFixed(3)}%</span>
                     ${question.isBookmarked ? '<span style="color: gold;">⭐</span>' : ''}
                 </div>
                 ${answersHtml}
