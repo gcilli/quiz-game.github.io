@@ -344,6 +344,11 @@ function calculateQuestionWeightAdaptive(questionId) {
     // Weight formula: inverse of success rate, scaled
     let weight = 1 / (successRate + 0.1); // Add 0.1 to avoid division by zero
     
+    // Factor in the number of times shown: more attempts with low accuracy = higher priority
+    // This ensures questions with 0% accuracy over 3 attempts get higher weight than 0% over 1 attempt
+    const attemptMultiplier = Math.sqrt(stats.timesShown); // Square root to avoid excessive weighting
+    weight *= attemptMultiplier;
+    
     // Boost weight for questions not shown recently
     const daysSinceLastShown = (Date.now() - stats.lastShown) / (1000 * 60 * 60 * 24);
     if (daysSinceLastShown > 5) {
