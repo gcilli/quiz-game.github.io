@@ -14,9 +14,11 @@ let categoryMenu, startBtn, quizContainer, categoryEl, questionEl, answersEl, ne
 let scoreEl, summaryEl, finalScoreEl, progressEl, errorListEl, progressBarFill;
 let restartBtn, backBtn, numDomandeSelect, timerInput, timerEl;
 let clearPersistentBtn, bookmarkBtn, onlySavedCheckbox, prevBtn, selectionStrategySelect;
+let topicCheckboxesContainer;
 
 // Quiz state
 let selectedCategories = [];
+let selectedTopics = [];
 let correctAnswer = null;
 let currentCategory = null;
 let currentQuestionId = null;
@@ -98,6 +100,7 @@ function initDomElements() {
     prevBtn = document.getElementById("prev-btn");
     selectionStrategySelect = document.getElementById("selection-strategy");
     progressBarFill = document.getElementById("progress-bar-fill");
+    topicCheckboxesContainer = document.getElementById("topic-checkboxes");
 }
 
 // Helper per mostrare/nascondere sezioni
@@ -127,9 +130,218 @@ const mostraSezione = (sezione) => {
     }
 };
 
+// Extract all unique topics from selected categories
+function getAvailableTopics(categories) {
+    const topics = new Set();
+    
+    categories.forEach(cat => {
+        if (!domande[cat]) return;
+        
+        domande[cat].forEach(q => {
+            if (q.topic && q.topic.trim() !== "") {
+                topics.add(q.topic.trim());
+            }
+        });
+    });
+    
+    return Array.from(topics).sort();
+}
+
+// Get topics for a specific category
+function getTopicsForCategory(category) {
+    const topics = new Set();
+    
+    if (!domande[category]) return [];
+    
+    domande[category].forEach(q => {
+        if (q.topic && q.topic.trim() !== "") {
+            topics.add(q.topic.trim());
+        }
+    });
+    
+    return Array.from(topics).sort();
+}
+
+// Update topics for a specific category
+function updateCategoryTopics(category) {
+    const container = document.querySelector(`.category-topics-container[data-category="${category}"] .topics-list`);
+    if (!container) return;
+    
+    const topics = getTopicsForCategory(category);
+    container.innerHTML = "";
+    
+    if (topics.length === 0) {
+        const p = document.createElement("p");
+        p.style.color = "var(--text-muted)";
+        p.style.fontStyle = "italic";
+        p.style.textAlign = "center";
+        p.style.padding = "1rem";
+        p.textContent = "Nessun topic disponibile per questa categoria";
+        container.appendChild(p);
+        return;
+    }
+    
+    // Calculate topic statistics - count questions per topic
+    const topicStats = {};
+    domande[category].forEach(q => {
+        const topic = q.topic ? q.topic.trim() : "";
+        if (topic !== "" && topics.includes(topic)) {
+            topicStats[topic] = (topicStats[topic] || 0) + 1;
+        }
+    });
+    
+    // Calculate correct/wrong answers per topic from persistent storage
+    const topicAnswerStats = {};
+    topics.forEach(topic => {
+        topicAnswerStats[topic] = { correct: 0, wrong: 0, uniqueQuestionsViewed: 0 };
+    });
+    
+    // Get question statistics from storage
+    const questionStats = SafeStorage.get("questionStats") || {};
+    domande[category].forEach(q => {
+        const topic = q.topic ? q.topic.trim() : "";
+        if (topic !== "" && topics.includes(topic)) {
+            const qKey = `${category}::${q.domanda}`;
+            const stats = questionStats[qKey];
+            if (stats && stats.timesShown > 0) {
+                // This question has been viewed at least once
+                topicAnswerStats[topic].uniqueQuestionsViewed++;
+                topicAnswerStats[topic].correct += stats.timesCorrect || 0;
+                topicAnswerStats[topic].wrong += stats.timesWrong || 0;
+            }
+        }
+    });
+    
+    // Add "select all" for this category
+    const selectAllDiv = document.createElement("div");
+    selectAllDiv.className = "topic-item select-all-topics";
+    
+    const selectAllHeader = document.createElement("div");
+    selectAllHeader.className = "topic-item-header";
+    
+    const selectAllCheckbox = document.createElement("input");
+    selectAllCheckbox.type = "checkbox";
+    selectAllCheckbox.id = `select-all-${category}`;
+    selectAllCheckbox.checked = true;
+    selectAllCheckbox.addEventListener("change", (e) => {
+        const topicCheckboxes = container.querySelectorAll('.topic-checkbox');
+        topicCheckboxes.forEach(cb => cb.checked = e.target.checked);
+    });
+    
+    const selectAllLabel = document.createElement("label");
+    selectAllLabel.htmlFor = `select-all-${category}`;
+    selectAllLabel.className = "topic-item-label";
+    selectAllLabel.textContent = "Seleziona tutti";
+    selectAllLabel.style.fontWeight = "bold";
+    selectAllLabel.style.cursor = "pointer";
+    
+    selectAllHeader.appendChild(selectAllCheckbox);
+    selectAllHeader.appendChild(selectAllLabel);
+    selectAllDiv.appendChild(selectAllHeader);
+    container.appendChild(selectAllDiv);
+    
+    // Add individual topics
+    topics.forEach((topic, index) => {
+        const topicDiv = document.createElement("div");
+        topicDiv.className = "topic-item";
+        
+        const topicHeader = document.createElement("div");
+        topicHeader.className = "topic-item-header";
+        
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = topic;
+        checkbox.className = "topic-checkbox";
+        checkbox.dataset.category = category;
+        checkbox.id = `topic-${category}-${index}`;
+        checkbox.checked = true;
+        checkbox.addEventListener("change", () => {
+            const allChecked = Array.from(container.querySelectorAll('.topic-checkbox'))
+                .every(cb => cb.checked);
+            const selectAllCb = document.getElementById(`select-all-${category}`);
+            if (selectAllCb) selectAllCb.checked = allChecked;
+        });
+        
+        const label = document.createElement("label");
+        label.htmlFor = `topic-${category}-${index}`;
+        label.className = "topic-item-label";
+        label.textContent = topic;
+        label.style.cursor = "pointer";
+        
+        const badge = document.createElement("span");
+        badge.style.marginLeft = "auto";
+        badge.style.padding = "0.25rem 0.5rem";
+        badge.style.background = "var(--button-bg)";
+        badge.style.borderRadius = "0.5rem";
+        badge.style.fontSize = "0.8rem";
+        badge.style.fontWeight = "bold";
+        badge.style.color = "var(--text-secondary)";
+        badge.textContent = `${topicAnswerStats[topic].uniqueQuestionsViewed}/${topicStats[topic] || 0}`;
+        
+        topicHeader.appendChild(checkbox);
+        topicHeader.appendChild(label);
+        topicHeader.appendChild(badge);
+        
+        const progressBar = document.createElement("div");
+        progressBar.className = "topic-progress-bar";
+        
+        // Calculate percentages for correct and wrong answers
+        const totalAnswered = topicAnswerStats[topic].correct + topicAnswerStats[topic].wrong;
+        const correctPerc = totalAnswered > 0 ? (topicAnswerStats[topic].correct / totalAnswered * 100) : 0;
+        const wrongPerc = totalAnswered > 0 ? (topicAnswerStats[topic].wrong / totalAnswered * 100) : 0;
+        
+        // Create correct answers section (green)
+        if (correctPerc > 0) {
+            const correctFill = document.createElement("div");
+            correctFill.className = "topic-progress-fill topic-progress-correct";
+            correctFill.style.width = `${correctPerc}%`;
+            progressBar.appendChild(correctFill);
+        }
+        
+        // Create wrong answers section (red)
+        if (wrongPerc > 0) {
+            const wrongFill = document.createElement("div");
+            wrongFill.className = "topic-progress-fill topic-progress-wrong";
+            wrongFill.style.width = `${wrongPerc}%`;
+            progressBar.appendChild(wrongFill);
+        }
+        
+        topicDiv.appendChild(topicHeader);
+        topicDiv.appendChild(progressBar);
+        
+        topicDiv.addEventListener('click', (e) => {
+            if (e.target !== checkbox && e.target !== label) {
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change'));
+            }
+        });
+        
+        container.appendChild(topicDiv);
+    });
+}
+
+// Update topic checkboxes based on selected categories
+function updateTopicCheckboxes() {
+    // This function is now handled by updateCategoryTopics for each category
+    // We'll update all categories on page load
+    const categories = ['CULTURA_GENERALE', 'ATTITUDINALI_LOGICO_DEDUTTIVI', 'ATTITUDINALI_LOGICO_MATEMATICI', 'ATTITUDINALI_LOGICO_VERBALI'];
+    categories.forEach(cat => {
+        updateCategoryTopics(cat);
+    });
+}
+
 function avviaQuiz() {
-    const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']:checked");
+    const checkboxes = categoryMenu.querySelectorAll(".category-checkbox:checked");
     selectedCategories = Array.from(checkboxes).map(cb => cb.value).filter(val => val !== "only-saved-questions");
+    
+    // Get selected topics only from selected categories
+    selectedTopics = [];
+    selectedCategories.forEach(category => {
+        const categoryTopicCheckboxes = document.querySelectorAll(`.topic-checkbox[data-category="${category}"]:checked`);
+        const categoryTopics = Array.from(categoryTopicCheckboxes).map(cb => cb.value);
+        selectedTopics.push(...categoryTopics);
+    });
+    
     numDomande = parseInt(numDomandeSelect.value);
     tempoTotale = parseInt(timerInput.value) * 60;
     tempoRimanente = tempoTotale;
@@ -221,8 +433,8 @@ function updateQuestionStats(questionId, wasCorrect) {
     // and will be recalculated when statistics screen is opened
 }
 
-function calculateQuestionWeight(questionId, questionData, cachedStats, cachedSavedQuestions) {
-    if (selectionStrategy === 'random') {
+function calculateQuestionWeight(questionId, cachedStats, cachedSavedQuestions, strategy) {
+    if (strategy === 'random') {
         return 1; // All questions have equal weight
     }
     
@@ -236,7 +448,7 @@ function calculateQuestionWeight(questionId, questionData, cachedStats, cachedSa
     
     // Never seen before gets highest priority
     if (stats.timesShown === 0) {
-        return 10;
+        return 100;
     }
     
     // Calculate success rate
@@ -267,7 +479,7 @@ function selectWeightedQuestion(availableQuestions, cachedStats, cachedSavedQues
     }
     
     // Weighted selection for adaptive strategy
-    const weights = availableQuestions.map(q => calculateQuestionWeight(q.id, q, cachedStats, cachedSavedQuestions));
+    const weights = availableQuestions.map(q => calculateQuestionWeight(q.id, cachedStats, cachedSavedQuestions, selectionStrategy));
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
     
     let random = Math.random() * totalWeight;
@@ -306,7 +518,9 @@ function calculateAllProbabilities() {
         return probabilityCache;
     }
     // Calculate all weights at once
-    const weights = allQuestions.map(q => calculateQuestionWeightAdaptive(q.id));
+    const savedQuestions = SafeStorage.get("savedQuestions") || [];
+    const questionStats = SafeStorage.get("questionStats") || {};
+    const weights = allQuestions.map(q => calculateQuestionWeight(q.id, questionStats, savedQuestions, 'adaptive'));
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
     // Create probability map
     const probabilities = {};
@@ -317,51 +531,9 @@ function calculateAllProbabilities() {
     return probabilities;
 }
 
-// Calculate probability percentage for a question (uses cache)
-function calculateQuestionProbability(questionId, filterCategory = 'all') {
-    const probabilities = calculateAllProbabilities();
-    return probabilities[questionId] || 0;
-}
-
 // Clear probability cache (call this when stats change)
 function clearProbabilityCache() {
     probabilityCache = null;
-}
-
-// Helper function to calculate weight in adaptive mode (always, regardless of selectionStrategy)
-function calculateQuestionWeightAdaptive(questionId) {
-    const stats = getQuestionStats(questionId);
-    
-    // Never seen before gets highest priority
-    if (stats.timesShown === 0) {
-        return 10;
-    }
-    
-    // Calculate success rate
-    const successRate = stats.timesCorrect / stats.timesShown;
-    
-    // Lower success rate = higher weight (more likely to be shown)
-    // Weight formula: inverse of success rate, scaled
-    let weight = 1 / (successRate + 0.1); // Add 0.1 to avoid division by zero
-    
-    // Factor in the number of times shown: more attempts with low accuracy = higher priority
-    // This ensures questions with 0% accuracy over 3 attempts get higher weight than 0% over 1 attempt
-    const attemptMultiplier = Math.sqrt(stats.timesShown); // Square root to avoid excessive weighting
-    weight *= attemptMultiplier;
-    
-    // Boost weight for questions not shown recently
-    const daysSinceLastShown = (Date.now() - stats.lastShown) / (1000 * 60 * 60 * 24);
-    if (daysSinceLastShown > 5) {
-        weight *= 1.5; // 50% boost if not shown in 5 days
-    }
-    
-    // Boost bookmarked questions (2x multiplier)
-    const savedQuestions = SafeStorage.get("savedQuestions") || [];
-    if (savedQuestions.includes(questionId)) {
-        weight *= 2.0; // 100% boost for bookmarked questions
-    }
-    
-    return weight;
 }
 
 // Statistics screen functions
@@ -549,7 +721,7 @@ function renderStatsQuestions(statsArray) {
                 <div class="question-stat-details">
                     <span><strong>Categoria:</strong> ${categoryName}</span>
                     <span><strong>Viste:</strong> ${stat.timesShown}</span>
-                    <span><strong>Probabilità:</strong> ${stat.probability.toFixed(3)}%</span>
+                    <span><strong>Probabilità:</strong> ${stat.probability.toFixed(4)}%</span>
                     ${stat.isBookmarked ? '<span style="color: gold;">⭐</span>' : ''}
                 </div>
                 ${answersHtml}
@@ -659,7 +831,7 @@ function renderUnseenQuestions(unseenQuestions, allProbabilities) {
                 </div>
                 <div class="question-stat-details">
                     <span><strong>Categoria:</strong> ${categoryName}</span>
-                    <span><strong>Probabilità:</strong> ${allProbabilities[question.id].toFixed(3)}%</span>
+                    <span><strong>Probabilità:</strong> ${allProbabilities[question.id].toFixed(4)}%</span>
                     ${question.isBookmarked ? '<span style="color: gold;">⭐</span>' : ''}
                 </div>
                 ${answersHtml}
@@ -892,6 +1064,14 @@ function nuovaDomanda() {
                 return;
             }
 
+            // Filter by topic if topics are selected
+            if (selectedTopics.length > 0) {
+                const questionTopic = q.topic ? q.topic.trim() : "";
+                if (questionTopic === "" || !selectedTopics.includes(questionTopic)) {
+                    return;
+                }
+            }
+
             if (!domandeUsateSet.has(domandaId)) {
                 domandeDisponibili.push({ categoria: cat, domanda: q, id: domandaId });
             }
@@ -907,6 +1087,15 @@ function nuovaDomanda() {
             domande[cat].forEach(q => {
                 const domandaId = `${cat}::${q.domanda}`;
                 if (onlySaved && !savedQuestionsSet.has(domandaId)) return;
+                
+                // Filter by topic if topics are selected
+                if (selectedTopics.length > 0) {
+                    const questionTopic = q.topic ? q.topic.trim() : "";
+                    if (questionTopic === "" || !selectedTopics.includes(questionTopic)) {
+                        return;
+                    }
+                }
+                
                 domandeDisponibili.push({ categoria: cat, domanda: q, id: domandaId });
             });
         });
@@ -1289,6 +1478,38 @@ function initializeEventListeners() {
         });
     }
 
+    // Category expand/collapse buttons
+    const expandButtons = document.querySelectorAll('.category-expand-btn');
+    expandButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const category = btn.dataset.category;
+            const container = document.querySelector(`.category-topics-container[data-category="${category}"]`);
+            
+            if (container) {
+                const isVisible = container.style.display !== 'none';
+                container.style.display = isVisible ? 'none' : 'block';
+                btn.classList.toggle('expanded', !isVisible);
+            }
+        });
+    });
+
+    // Category checkboxes - update topics when categories change
+    const categoryCheckboxes = document.querySelectorAll('.category-checkbox');
+    categoryCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const category = checkbox.value;
+            const topicsContainer = document.querySelector(`.category-topics-container[data-category="${category}"]`);
+            
+            // If unchecked, collapse the topics
+            if (!checkbox.checked && topicsContainer) {
+                topicsContainer.style.display = 'none';
+                const expandBtn = document.querySelector(`.category-expand-btn[data-category="${category}"]`);
+                if (expandBtn) expandBtn.classList.remove('expanded');
+            }
+        });
+    });
+
     // Back to main menu buttons
     const backToMainBtn = document.getElementById("back-to-main-btn");
     if (backToMainBtn) {
@@ -1511,6 +1732,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Determine which page we're on and show appropriate screen
     if (window.location.pathname.includes('singleplayer.html')) {
         mostraSezione('singleplayer-menu');
+        // Initialize topic checkboxes after loading questions
+        updateTopicCheckboxes();
     } else if (document.getElementById('main-menu')) {
         // We're on index.html
         mostraSezione('main-menu');

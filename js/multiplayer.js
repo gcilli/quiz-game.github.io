@@ -552,13 +552,28 @@ class MultiplayerUI {
   }
 
   async init() {
+    // Numero atteso di domande nel database (modifica qui se necessario)
+    const EXPECTED_TOTAL_QUESTIONS = 2000;
+
+    // Mostra spinner di caricamento
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner';
+    spinner.style.margin = '3em auto';
+    spinner.style.display = 'block';
+    spinner.innerHTML = '';
+    document.body.appendChild(spinner);
+
+    // Blocca la UI
+    document.querySelectorAll('button, input').forEach(el => el.disabled = true);
+
     // Setup dark mode (always works, no dependencies)
     this.setupDarkMode();
-
     // Setup event listeners (always works, no dependencies)
     this.setupEventListeners();
 
     // Load questions
+    let loaded = false;
+    let total = 0;
     try {
       const response = await fetch('data/questions.json');
       if (!response.ok) {
@@ -566,12 +581,27 @@ class MultiplayerUI {
       }
       this.domande = await response.json();
       window.domande = this.domande;
-      console.log('Questions loaded successfully:', Object.keys(this.domande).length, 'categories');
+      loaded = true;
+      // Controllo che tutte le domande siano caricate
+      for (const cat in this.domande) {
+        total += this.domande[cat].length;
+      }
+      console.log('Questions loaded:', total);
+      if (total < EXPECTED_TOTAL_QUESTIONS) {
+        alert('Errore: sono state caricate solo ' + total + ' domande su ' + EXPECTED_TOTAL_QUESTIONS + '. Il quiz non può essere avviato finché tutte le domande non sono caricate.');
+        spinner.remove();
+        return false;
+      }
     } catch (error) {
       console.error('Error loading questions:', error);
       alert('Errore nel caricamento delle domande. Dettagli nella console (F12).\nAssicurati di aprire il file tramite un server locale (non file://)');
+      spinner.remove();
       return false;
     }
+
+    // Rimuovi spinner e sblocca la UI
+    spinner.remove();
+    document.querySelectorAll('button, input').forEach(el => el.disabled = false);
 
     // Initialize Firebase
     if (!initializeFirebase()) {
@@ -581,11 +611,9 @@ class MultiplayerUI {
 
     // Setup global callbacks
     this.setupGlobalCallbacks();
-
     // Show home screen
     this.showScreen('homeScreen');
-    
-    return true;
+    return loaded;
   }
 
   setupDarkMode() {

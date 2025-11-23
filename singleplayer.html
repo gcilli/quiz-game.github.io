@@ -13,13 +13,78 @@
         <!-- Single Player Setup Screen -->
         <div id="setupScreen" class="screen active">
             <div class="category-select">
-                <p><strong>Seleziona una o più categorie:</strong></p>
-                <label><input type="checkbox" value="CULTURA_GENERALE" checked> Cultura generale</label>
-                <label><input type="checkbox" value="ATTITUDINALI_LOGICO_DEDUTTIVI" checked> Logico-deduttivi</label>
-                <label><input type="checkbox" value="ATTITUDINALI_LOGICO_MATEMATICI" checked> Logico-matematici</label>
-                <label><input type="checkbox" value="ATTITUDINALI_LOGICO_VERBALI" checked> Logico-verbali</label>
+                <h2 style="color: var(--text-color); margin-bottom: 1.5rem;">Seleziona categorie e topics</h2>
+                
+                <!-- Category Cards with Expandable Topics -->
+                <div id="category-cards-container">
+                    
+                    <!-- Categoria 1: Cultura Generale -->
+                    <div class="category-expandable-card" data-category="CULTURA_GENERALE">
+                        <div class="category-expandable-header">
+                            <input type="checkbox" value="CULTURA_GENERALE" class="category-checkbox" checked id="cat-cg">
+                            <label for="cat-cg" class="category-expandable-label">
+                                <span class="category-title">Cultura generale</span>
+                            </label>
+                            <button class="category-expand-btn" data-category="CULTURA_GENERALE">
+                                <span class="expand-icon">▼</span>
+                            </button>
+                        </div>
+                        <div class="category-topics-container" data-category="CULTURA_GENERALE" style="display: none;">
+                            <div class="topics-list"></div>
+                        </div>
+                    </div>
 
-                <hr style="width:100%;text-align:left;margin-left:0">
+                    <!-- Categoria 2: Logico-deduttivi -->
+                    <div class="category-expandable-card" data-category="ATTITUDINALI_LOGICO_DEDUTTIVI">
+                        <div class="category-expandable-header">
+                            <input type="checkbox" value="ATTITUDINALI_LOGICO_DEDUTTIVI" class="category-checkbox" checked id="cat-ld">
+                            <label for="cat-ld" class="category-expandable-label">
+                                <span class="category-title">Logico-deduttivi</span>
+                            </label>
+                            <button class="category-expand-btn" data-category="ATTITUDINALI_LOGICO_DEDUTTIVI">
+                                <span class="expand-icon">▼</span>
+                            </button>
+                        </div>
+                        <div class="category-topics-container" data-category="ATTITUDINALI_LOGICO_DEDUTTIVI" style="display: none;">
+                            <div class="topics-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Categoria 3: Logico-matematici -->
+                    <div class="category-expandable-card" data-category="ATTITUDINALI_LOGICO_MATEMATICI">
+                        <div class="category-expandable-header">
+                            <input type="checkbox" value="ATTITUDINALI_LOGICO_MATEMATICI" class="category-checkbox" checked id="cat-lm">
+                            <label for="cat-lm" class="category-expandable-label">
+                                <span class="category-title">Logico-matematici</span>
+                            </label>
+                            <button class="category-expand-btn" data-category="ATTITUDINALI_LOGICO_MATEMATICI">
+                                <span class="expand-icon">▼</span>
+                            </button>
+                        </div>
+                        <div class="category-topics-container" data-category="ATTITUDINALI_LOGICO_MATEMATICI" style="display: none;">
+                            <div class="topics-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Categoria 4: Logico-verbali -->
+                    <div class="category-expandable-card" data-category="ATTITUDINALI_LOGICO_VERBALI">
+                        <div class="category-expandable-header">
+                            <input type="checkbox" value="ATTITUDINALI_LOGICO_VERBALI" class="category-checkbox" checked id="cat-lv">
+                            <label for="cat-lv" class="category-expandable-label">
+                                <span class="category-title">Logico-verbali</span>
+                            </label>
+                            <button class="category-expand-btn" data-category="ATTITUDINALI_LOGICO_VERBALI">
+                                <span class="expand-icon">▼</span>
+                            </button>
+                        </div>
+                        <div class="category-topics-container" data-category="ATTITUDINALI_LOGICO_VERBALI" style="display: none;">
+                            <div class="topics-list"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <hr style="width:100%;text-align:left;margin-left:0; margin-top: 1rem; margin-bottom: 1.5rem;">
 
                 <label>
                     <input type="checkbox" id="only-saved-questions"> Solo domande salvate
@@ -76,7 +141,7 @@
                         <option value="most-likely">Più probabili</option>
                         <option value="least-likely">Meno probabili</option>
                         <option value="bookmarked">Preferite</option>
-                        <option value="alphabetical">Ordine alfabetico</option>
+                        <option value="alphabetical">altro</option>
                         
                     </select>
                 </label>
