@@ -392,6 +392,15 @@ class MultiplayerQuiz {
     }
   }
 
+  shuffleQuesions(allQuestions) {
+    for (let i = allQuestions.length - 1; i > 0; i--) {
+      let j = Math.floor(Math.random() * (i + 1));
+      [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+    }
+
+    return allQuestions
+  }
+
   // Select random questions from the database
   selectRandomQuestions(count) {
     // Load questions from the global questions object (loaded in the page)
@@ -431,11 +440,10 @@ class MultiplayerQuiz {
     }
 
     // Shuffle and select
-    const shuffled = allQuestions.sort(() => Math.random() - 0.5);
+    const shuffled = this.shuffleQuesions(allQuestions);
     const selected = shuffled.slice(0, actualCount);
     
     // Debug: log the first question to verify structure
-    console.log('Sample question:', JSON.stringify(selected[0], null, 2));
     console.log(`Selected ${selected.length} questions out of ${count} requested`);
     
     return selected;
