@@ -1740,6 +1740,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
+// Prevent user from leaving page during quiz
+window.addEventListener('beforeunload', function(e) {
+    if (quizInCorso) {
+        // Cancel the event
+        e.preventDefault();
+        // Chrome requires returnValue to be set
+        e.returnValue = '';
+        return '';
+    }
+});
+
 // Make toggleAnswers globally accessible for onclick handlers
 window.toggleAnswers = function(index) {
     const answersDiv = document.getElementById(`answers-${index}`);
