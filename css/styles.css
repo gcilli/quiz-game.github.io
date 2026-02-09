@@ -11,14 +11,20 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Optional: Center spinner in stat cards */
 .stat-card-value .spinner {
     margin: 0 auto;
 }
+
 :root {
     --primary: #007bff;
     --bg: #f4f4f9;
@@ -274,6 +280,61 @@ h2 {
     color: var(--text-secondary);
     text-align: center;
 }
+
+/* Dataset selection styles */
+.dataset-selection {
+    margin-bottom: 1rem;
+}
+
+.dataset-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.dataset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    background: var(--container-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--text-color);
+    text-align: center;
+}
+
+.dataset-btn:hover {
+    transform: translateY(-2px);
+    border-color: #0077ff;
+    box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
+}
+
+.dataset-btn.active {
+    border-color: #0077ff;
+    background: rgba(0, 119, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 119, 255, 0.2);
+}
+
+.dataset-icon {
+    font-size: 2.5rem;
+}
+
+.dataset-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.dataset-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
 
 .multiplayer-menu {
     max-width: 600px;
@@ -731,7 +792,7 @@ input:-webkit-autofill:active {
 }
 
 /* Create room form labels with inline layout */
-#createRoomForm > label {
+#createRoomForm>label {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -740,7 +801,7 @@ input:-webkit-autofill:active {
     color: var(--text-color);
 }
 
-#createRoomForm > label p {
+#createRoomForm>label p {
     flex: 2;
     text-align: left;
     color: var(--text-color);
@@ -748,7 +809,7 @@ input:-webkit-autofill:active {
     word-wrap: break-word;
 }
 
-#createRoomForm > label input {
+#createRoomForm>label input {
     flex: 1;
     min-width: 10rem;
     display: block;
@@ -763,7 +824,7 @@ input:-webkit-autofill:active {
 }
 
 /* Join room form labels with inline layout */
-#joinRoomForm > label {
+#joinRoomForm>label {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -772,7 +833,7 @@ input:-webkit-autofill:active {
     color: var(--text-color);
 }
 
-#joinRoomForm > label p {
+#joinRoomForm>label p {
     flex: 2;
     text-align: left;
     color: var(--text-color);
@@ -780,7 +841,7 @@ input:-webkit-autofill:active {
     word-wrap: break-word;
 }
 
-#joinRoomForm > label input {
+#joinRoomForm>label input {
     flex: 1;
     min-width: 10rem;
     display: block;
@@ -963,11 +1024,11 @@ input:-webkit-autofill:active {
         flex-direction: column;
         gap: 1rem;
     }
-    
+
     .timer {
         font-size: 2rem;
     }
-    
+
     .final-leaderboard-item {
         grid-template-columns: 40px 1fr 80px;
         padding: 0.75rem;
@@ -1045,11 +1106,30 @@ input:-webkit-autofill:active {
     white-space: nowrap;
 }
 
-.badge-excellent { background: #d4edda; color: #155724; }
-.badge-good { background: #d1ecf1; color: #0c5460; }
-.badge-average { background: #fff3cd; color: #856404; }
-.badge-poor { background: #f8d7da; color: #721c24; }
-.badge-new { background: #e2e3e5; color: #383d41; }
+.badge-excellent {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-good {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-average {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-poor {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.badge-new {
+    background: #e2e3e5;
+    color: #383d41;
+}
 
 .question-stat-bar {
     width: 100%;
@@ -1073,9 +1153,17 @@ input:-webkit-autofill:active {
     font-weight: bold;
 }
 
-.question-stat-bar-fill.low { background: linear-gradient(90deg, #dc3545, #e74c3c); }
-.question-stat-bar-fill.medium { background: linear-gradient(90deg, #ffc107, #ff9800); }
-.question-stat-bar-fill.high { background: linear-gradient(90deg, #28a745, #20c997); }
+.question-stat-bar-fill.low {
+    background: linear-gradient(90deg, #dc3545, #e74c3c);
+}
+
+.question-stat-bar-fill.medium {
+    background: linear-gradient(90deg, #ffc107, #ff9800);
+}
+
+.question-stat-bar-fill.high {
+    background: linear-gradient(90deg, #28a745, #20c997);
+}
 
 .question-stat-details {
     display: flex;
@@ -1138,7 +1226,7 @@ input:-webkit-autofill:active {
     min-height: 120px;
 }
 
-.category-card input[type="checkbox"]:checked + .category-card-label {
+.category-card input[type="checkbox"]:checked+.category-card-label {
     border-color: var(--primary);
     background: linear-gradient(135deg, var(--primary) 0%, rgba(74, 158, 255, 0.1) 100%);
     box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
@@ -1159,7 +1247,7 @@ input:-webkit-autofill:active {
     transition: all 0.3s ease;
 }
 
-.category-card input[type="checkbox"]:checked + .category-card-label .category-icon {
+.category-card input[type="checkbox"]:checked+.category-card-label .category-icon {
     filter: grayscale(0%);
     opacity: 1;
     transform: scale(1.1);
@@ -1182,7 +1270,7 @@ input:-webkit-autofill:active {
     transition: all 0.3s ease;
 }
 
-.category-card input[type="checkbox"]:checked + .category-card-label .category-card-badge {
+.category-card input[type="checkbox"]:checked+.category-card-label .category-card-badge {
     background: var(--primary);
     color: white;
 }
@@ -1282,6 +1370,7 @@ input:-webkit-autofill:active {
         opacity: 0;
         max-height: 0;
     }
+
     to {
         opacity: 1;
         max-height: 1000px;

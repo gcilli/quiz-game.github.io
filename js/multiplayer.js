@@ -10,7 +10,7 @@ class MultiplayerQuiz {
     this.isHost = false;
     this.roomRef = null;
     this.listeners = [];
-    
+
     // Game state
     this.players = {};
     this.currentQuestionIndex = 0;
@@ -19,7 +19,7 @@ class MultiplayerQuiz {
     this.gameStarted = false;
     this.questionStartTime = null;
     this.hasAnswered = false;
-    
+
     // Configuration
     this.maxPlayers = 10;
     this.minPlayers = 2;
@@ -87,7 +87,7 @@ class MultiplayerQuiz {
 
       this.roomRef = this.database.ref('rooms/' + this.roomCode);
       await this.roomRef.set(roomData);
-      
+
       this.setupListeners();
       return this.roomCode;
     } catch (error) {
@@ -110,10 +110,10 @@ class MultiplayerQuiz {
       }
 
       const roomData = snapshot.val();
-      
+
       // Store host ID
       this.hostId = roomData.host;
-      
+
       // Check if game already started
       if (roomData.gameStarted) {
         throw new Error('La partita è già iniziata');
@@ -138,7 +138,7 @@ class MultiplayerQuiz {
       this.timerDuration = roomData.timer;
       this.numQuestions = roomData.numQuestions; // Store the configured number
       this.setupListeners();
-      
+
       return true;
     } catch (error) {
       console.error('Error joining room:', error);
@@ -301,7 +301,7 @@ class MultiplayerQuiz {
     let points = 0;
     // Speed ratio from 0.1 (slowest) to 1.0 (fastest) - always has some impact
     const speedRatio = Math.max(0.1, 1 - (timeElapsed / this.timerDuration));
-    
+
     if (isCorrect) {
       // Base points + speed bonus (more points for faster correct answers)
       const speedBonus = Math.floor(this.speedBonusMax * speedRatio);
@@ -333,7 +333,7 @@ class MultiplayerQuiz {
     }
 
     this.hasAnswered = true;
-    
+
     const currentQuestion = this.questions[this.currentQuestionIndex];
     const isCorrect = answerIndex === currentQuestion.rispostaCorretta;
 
@@ -348,10 +348,10 @@ class MultiplayerQuiz {
     // Now read back both timestamps to calculate elapsed time using server clock
     const questionStartSnapshot = await this.roomRef.child('questionStartTime').once('value');
     const answerSnapshot = await answerRef.once('value');
-    
+
     const questionStartTime = questionStartSnapshot.val();
     const answerTime = answerSnapshot.val().timestamp;
-    
+
     // Validate timestamps
     if (!questionStartTime || questionStartTime === 0) {
       console.error('questionStartTime is null or 0, using fallback calculation');
@@ -359,7 +359,7 @@ class MultiplayerQuiz {
       const timeElapsed = Math.max(0.1, this.timerDuration - (this.timeRemaining || this.timerDuration));
       return await this.calculateAndUpdateScore(answerRef, isCorrect, timeElapsed);
     }
-    
+
     // Calculate elapsed time using server timestamps (both from same clock)
     const timeElapsed = Math.max(0.1, (answerTime - questionStartTime) / 1000); // seconds, minimum 0.1s
 
@@ -373,9 +373,9 @@ class MultiplayerQuiz {
     }
 
     const nextIndex = this.currentQuestionIndex + 1;
-    
+
     console.log('nextQuestion called. Current:', this.currentQuestionIndex, 'Next:', nextIndex, 'Total questions:', this.questions.length);
-    
+
     if (nextIndex >= this.questions.length) {
       // Game over
       console.log('Game ending - no more questions');
@@ -414,13 +414,13 @@ class MultiplayerQuiz {
         // Get the correct answer (default to first one if not specified)
         const correctAnswerIndex = (typeof q.rispostaCorretta === 'number') ? q.rispostaCorretta : 0;
         const correctAnswer = q.risposte[correctAnswerIndex];
-        
+
         // Create a copy of answers and shuffle them
         const shuffledAnswers = [...q.risposte].sort(() => Math.random() - 0.5);
-        
+
         // Find the new index of the correct answer after shuffling
         const newCorrectIndex = shuffledAnswers.indexOf(correctAnswer);
-        
+
         const question = {
           categoria: categoria,
           domanda: q.domanda,
@@ -434,7 +434,7 @@ class MultiplayerQuiz {
     // Check if we have enough questions
     const availableCount = allQuestions.length;
     const actualCount = Math.min(count, availableCount);
-    
+
     if (actualCount < count) {
       console.warn(`Requested ${count} questions but only ${availableCount} available. Using ${actualCount} questions.`);
     }
@@ -442,10 +442,10 @@ class MultiplayerQuiz {
     // Shuffle and select
     const shuffled = this.shuffleQuesions(allQuestions);
     const selected = shuffled.slice(0, actualCount);
-    
+
     // Debug: log the first question to verify structure
     console.log(`Selected ${selected.length} questions out of ${count} requested`);
-    
+
     return selected;
   }
 
@@ -469,7 +469,7 @@ class MultiplayerQuiz {
     if (this.isHost) {
       return; // Host is always ready
     }
-    
+
     const currentReady = this.players[this.playerId]?.ready || false;
     await this.roomRef.child('players/' + this.playerId + '/ready').set(!currentReady);
   }
@@ -509,13 +509,13 @@ class MultiplayerQuiz {
     }
 
     await this.roomRef.update(updates);
-    
+
     // Update local state
     this.questions = newQuestions;
     this.currentQuestionIndex = 0;
     this.gameStarted = false;
     this.hasAnswered = false;
-    
+
     // Notify other players to reload questions
     this.notifyQuestionsChanged();
   }
@@ -557,9 +557,20 @@ class MultiplayerUI {
     this.allPlayersAnswered = false; // Track if all players answered current question
     this.currentQuestionId = null; // Track current question ID for bookmarking
     this.bookmarkBtn = null; // Bookmark button reference
+    this.currentDataset = 'questions.json'; // Default dataset
   }
 
   async init() {
+    // Check for dataset parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const datasetParam = urlParams.get('dataset');
+    if (datasetParam) {
+      this.currentDataset = datasetParam;
+    }
+
+    // Make currentDataset available globally for SafeStorage
+    window.currentDataset = this.currentDataset;
+
     // Numero atteso di domande nel database (modifica qui se necessario)
     const EXPECTED_TOTAL_QUESTIONS = 2000;
 
@@ -583,7 +594,7 @@ class MultiplayerUI {
     let loaded = false;
     let total = 0;
     try {
-      const response = await fetch('data/questions.json');
+      const response = await fetch(`data/${this.currentDataset}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -594,8 +605,10 @@ class MultiplayerUI {
       for (const cat in this.domande) {
         total += this.domande[cat].length;
       }
-      console.log('Questions loaded:', total);
-      if (total < EXPECTED_TOTAL_QUESTIONS) {
+      console.log(`Questions loaded from ${this.currentDataset}:`, total);
+
+      // Skip the total check for prova_scritta dataset as it has fewer questions
+      if (this.currentDataset === 'questions.json' && total < EXPECTED_TOTAL_QUESTIONS) {
         alert('Errore: sono state caricate solo ' + total + ' domande su ' + EXPECTED_TOTAL_QUESTIONS + '. Il quiz non può essere avviato finché tutte le domande non sono caricate.');
         spinner.remove();
         return false;
@@ -639,7 +652,7 @@ class MultiplayerUI {
       if (savedDarkMode) {
         darkModeCheckbox.checked = true;
       }
-      
+
       // Toggle dark mode on checkbox change
       darkModeCheckbox.addEventListener("change", () => {
         body.classList.toggle("dark-mode");
@@ -650,6 +663,20 @@ class MultiplayerUI {
   }
 
   setupEventListeners() {
+    // Dataset switcher
+    const datasetSwitcher = document.getElementById('mp-dataset-switcher');
+    if (datasetSwitcher) {
+      // Set initial value from current dataset
+      datasetSwitcher.value = this.currentDataset;
+
+      datasetSwitcher.addEventListener('change', async () => {
+        const selectedDataset = datasetSwitcher.value;
+
+        // Reload the page with the new dataset parameter
+        window.location.href = `multiplayer.html?dataset=${encodeURIComponent(selectedDataset)}`;
+      });
+    }
+
     // Home screen
     document.getElementById('createRoomBtn').addEventListener('click', () => {
       this.showScreen('createRoomScreen');
@@ -755,16 +782,16 @@ class MultiplayerUI {
       // Initialize previous scores (all should be 0 at game start)
       this.previousScores = { ...this.game.scores };
       this.allPlayersAnswered = false;
-      
+
       // Set up listener for first question (question 0)
       this.game.setupAnswersListener(0);
       this.showScreen('gameScreen');
       this.displayQuestion();
-      
+
       // Initialize leaderboard with current scores (no diff yet)
       const leaderboard = this.game.getLeaderboard();
       this.updateMiniLeaderboard(leaderboard);
-      
+
       this.startTimer();
     };
 
@@ -777,7 +804,7 @@ class MultiplayerUI {
       // Save current scores before new question starts
       this.previousScores = { ...this.game.scores };
       this.allPlayersAnswered = false; // Reset flag for new question
-      
+
       document.getElementById('currentQuestionNum').textContent = index + 1;
       this.displayQuestion();
       document.getElementById('answerFeedback').style.display = 'none';
@@ -785,7 +812,7 @@ class MultiplayerUI {
       document.getElementById('nextQuestionBtn').style.display = 'none';
       this.game.hasAnswered = false;
       this.startTimer();
-      
+
       // Update leaderboard without diff for new question
       const leaderboard = this.game.getLeaderboard();
       this.updateMiniLeaderboard(leaderboard);
@@ -815,20 +842,20 @@ class MultiplayerUI {
       if (answeredPlayers === totalPlayers) {
         // All players have answered
         console.log('All players answered!');
-        
+
         // Set flag to show diff in leaderboard
         this.allPlayersAnswered = true;
-        
+
         // Stop the timer for everyone
         if (this.timerInterval) {
           clearInterval(this.timerInterval);
           this.timerInterval = null;
         }
-        
+
         // Update leaderboard with score differences
         const leaderboard = this.game.getLeaderboard();
         this.updateMiniLeaderboardWithDiff(leaderboard);
-        
+
         // Show next button for host
         if (this.game.isHost) {
           document.getElementById('nextQuestionBtn').style.display = 'block';
@@ -998,14 +1025,14 @@ class MultiplayerUI {
 
       if (this.timeRemaining <= 0) {
         clearInterval(this.timerInterval);
-        
+
         // Timer expired - set flag to show diff
         this.allPlayersAnswered = true;
-        
+
         // Update leaderboard with differences
         const leaderboard = this.game.getLeaderboard();
         this.updateMiniLeaderboardWithDiff(leaderboard);
-        
+
         if (!this.game.hasAnswered) {
           // Time's up - show correct answer and auto-submit
           const question = this.game.questions[this.game.currentQuestionIndex];
@@ -1042,7 +1069,7 @@ class MultiplayerUI {
       const diff = player.score - previousScore;
       const diffText = diff > 0 ? `+${diff}` : `${diff}`;
       const diffColor = diff > 0 ? '#4CAF50' : (diff < 0 ? '#f44336' : 'var(--text-color)');
-      
+
       return `<div class="leaderboard-item">
         <span>${index + 1}. ${player.name}</span>
         <span>

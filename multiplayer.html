@@ -1,15 +1,29 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz Multiplayer</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Home Screen -->
         <div id="homeScreen" class="screen active">
+            <!-- Dataset Switcher -->
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem;">
+                    <p><strong>Set di domande:</strong></p>
+                    <select id="mp-dataset-switcher"
+                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 2px solid var(--border-color); background: var(--container-bg); color: var(--text-color); font-size: 1rem; cursor: pointer;">
+                        <option value="questions.json">Prova Preselettiva</option>
+                        <option value="questions_prova_scritta.json">Prova Scritta</option>
+                    </select>
+                </label>
+            </div>
+
             <div class="button-group">
                 <button id="createRoomBtn" class="btn btn-primary">Crea Stanza</button>
                 <button id="joinRoomBtn" class="btn btn-secondary">Unisciti</button>
@@ -20,23 +34,23 @@
         <!-- Create Room Screen -->
         <div id="createRoomScreen" class="screen">
             <h2 style="margin-bottom: 2rem;">Crea una Stanza</h2>
-            
+
             <form id="createRoomForm">
                 <label>
                     <p><strong>Il tuo nome:</strong></p>
                     <input type="text" id="hostName">
                 </label>
-                
+
                 <label>
                     <p><strong>Numero di domande:</strong></p>
                     <input id="numQuestions" type="number" min="1" max="100" value="10" required>
                 </label>
-                
+
                 <label>
                     <p><strong>Tempo per domanda (secondi):</strong></p>
                     <input id="timerSetting" type="number" min="5" max="300" value="30" required>
                 </label>
-                
+
                 <div class="button-group">
                     <button type="submit" class="btn btn-primary">Crea Stanza</button>
                     <button type="button" id="cancelCreateBtn" class="btn btn-tertiary">← Menù principale</button>
@@ -47,18 +61,19 @@
         <!-- Join Room Screen -->
         <div id="joinRoomScreen" class="screen">
             <h2 style="margin-bottom: 2rem;">Unisciti a una Stanza</h2>
-            
+
             <form id="joinRoomForm">
                 <label>
                     <p><strong>Il tuo nome:</strong></p>
                     <input type="text" id="playerName" maxlength="20">
                 </label>
-                
+
                 <label>
                     <p><strong>Codice stanza:</strong></p>
-                    <input type="text" id="roomCodeInput" maxlength="6" required placeholder="Es: ABC123" style="text-transform: uppercase;">
+                    <input type="text" id="roomCodeInput" maxlength="6" required placeholder="Es: ABC123"
+                        style="text-transform: uppercase;">
                 </label>
-                
+
                 <div class="button-group">
                     <button type="submit" class="btn btn-primary">Unisciti</button>
                     <button type="button" id="cancelJoinBtn" class="btn btn-tertiary">← Menù principale</button>
@@ -69,20 +84,20 @@
         <!-- Lobby Screen -->
         <div id="lobbyScreen" class="screen">
             <h2>Stanza: <span id="roomCodeDisplay"></span></h2>
-            
+
             <div id="lobbySettings" class="lobby-settings">
                 <p><strong>Domande:</strong> <span id="lobbyNumQuestions"></span></p>
                 <p><strong>Tempo:</strong> <span id="lobbyTimer"></span> secondi</p>
             </div>
-            
+
             <h3 style="color: var(--text-color);">Giocatori (<span id="playerCount">0</span>):</h3>
             <div id="playersList" class="players-list"></div>
-            
+
             <div class="button-group">
                 <button id="startGameBtn" class="btn btn-primary" style="display: none;">Inizia Partita</button>
                 <button id="leaveLobbyBtn" class="btn btn-tertiary">Esci</button>
             </div>
-            
+
             <div id="waitingMessage" class="info-message" style="display: none;">
                 In attesa che l'host avvii la partita...
             </div>
@@ -99,33 +114,33 @@
                 </div>
                 <div id="gameTimer" class="timer">30</div>
             </div>
-            
+
             <div id="gameQuestion" class="question"></div>
             <div id="gameAnswers" class="answers"></div>
-            
+
             <div id="answerFeedback" class="answer-feedback" style="display: none;">
                 <p id="feedbackText"></p>
                 <p id="feedbackPoints"></p>
             </div>
-            
+
             <div class="mini-leaderboard">
                 <h4>Classifica</h4>
                 <div id="miniLeaderboard"></div>
             </div>
-            
+
             <div id="waitingForPlayers" class="info-message" style="display: none;">
                 In attesa degli altri giocatori...
             </div>
-            
+
             <button id="nextQuestionBtn" class="btn btn-primary" style="display: none;">Prossima Domanda</button>
         </div>
 
         <!-- Results Screen -->
         <div id="resultsScreen" class="screen">
             <h2>🏆 Risultati Finali</h2>
-            
+
             <div id="finalLeaderboard" class="final-leaderboard"></div>
-            
+
             <div class="button-group">
                 <button id="playAgainBtn" class="btn btn-primary" style="display: none;">Gioca Ancora</button>
                 <button id="backToHomeBtn" class="btn btn-secondary">Torna al Menu</button>
@@ -136,10 +151,11 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    
+
     <!-- Application Scripts -->
     <script src="js/firebase-config.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/multiplayer.js"></script>
 </body>
+
 </html>

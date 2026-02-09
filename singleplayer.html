@@ -13,75 +13,23 @@
         <!-- Single Player Setup Screen -->
         <div id="setupScreen" class="screen active">
             <div class="category-select">
-                <h2 style="color: var(--text-color); margin-bottom: 1.5rem;">Seleziona categorie e topics</h2>
-                
+                <h2 style="color: var(--text-color); margin-bottom: 1rem;">Seleziona categorie e topics</h2>
+
+                <!-- Dataset Switcher -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem;">
+                        <p><strong>Set di domande:</strong></p>
+                        <select id="dataset-switcher"
+                            style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 2px solid var(--border-color); background: var(--container-bg); color: var(--text-color); font-size: 1rem; cursor: pointer;">
+                            <option value="questions.json">Prova Preselettiva</option>
+                            <option value="questions_prova_scritta.json">Prova Scritta</option>
+                        </select>
+                    </label>
+                </div>
+
                 <!-- Category Cards with Expandable Topics -->
                 <div id="category-cards-container">
-                    
-                    <!-- Categoria 1: Cultura Generale -->
-                    <div class="category-expandable-card" data-category="CULTURA_GENERALE">
-                        <div class="category-expandable-header">
-                            <input type="checkbox" value="CULTURA_GENERALE" class="category-checkbox" checked id="cat-cg">
-                            <label for="cat-cg" class="category-expandable-label">
-                                <span class="category-title">Cultura generale</span>
-                            </label>
-                            <button class="category-expand-btn" data-category="CULTURA_GENERALE">
-                                <span class="expand-icon">▼</span>
-                            </button>
-                        </div>
-                        <div class="category-topics-container" data-category="CULTURA_GENERALE" style="display: none;">
-                            <div class="topics-list"></div>
-                        </div>
-                    </div>
-
-                    <!-- Categoria 2: Logico-deduttivi -->
-                    <div class="category-expandable-card" data-category="ATTITUDINALI_LOGICO_DEDUTTIVI">
-                        <div class="category-expandable-header">
-                            <input type="checkbox" value="ATTITUDINALI_LOGICO_DEDUTTIVI" class="category-checkbox" checked id="cat-ld">
-                            <label for="cat-ld" class="category-expandable-label">
-                                <span class="category-title">Logico-deduttivi</span>
-                            </label>
-                            <button class="category-expand-btn" data-category="ATTITUDINALI_LOGICO_DEDUTTIVI">
-                                <span class="expand-icon">▼</span>
-                            </button>
-                        </div>
-                        <div class="category-topics-container" data-category="ATTITUDINALI_LOGICO_DEDUTTIVI" style="display: none;">
-                            <div class="topics-list"></div>
-                        </div>
-                    </div>
-
-                    <!-- Categoria 3: Logico-matematici -->
-                    <div class="category-expandable-card" data-category="ATTITUDINALI_LOGICO_MATEMATICI">
-                        <div class="category-expandable-header">
-                            <input type="checkbox" value="ATTITUDINALI_LOGICO_MATEMATICI" class="category-checkbox" checked id="cat-lm">
-                            <label for="cat-lm" class="category-expandable-label">
-                                <span class="category-title">Logico-matematici</span>
-                            </label>
-                            <button class="category-expand-btn" data-category="ATTITUDINALI_LOGICO_MATEMATICI">
-                                <span class="expand-icon">▼</span>
-                            </button>
-                        </div>
-                        <div class="category-topics-container" data-category="ATTITUDINALI_LOGICO_MATEMATICI" style="display: none;">
-                            <div class="topics-list"></div>
-                        </div>
-                    </div>
-
-                    <!-- Categoria 4: Logico-verbali -->
-                    <div class="category-expandable-card" data-category="ATTITUDINALI_LOGICO_VERBALI">
-                        <div class="category-expandable-header">
-                            <input type="checkbox" value="ATTITUDINALI_LOGICO_VERBALI" class="category-checkbox" checked id="cat-lv">
-                            <label for="cat-lv" class="category-expandable-label">
-                                <span class="category-title">Logico-verbali</span>
-                            </label>
-                            <button class="category-expand-btn" data-category="ATTITUDINALI_LOGICO_VERBALI">
-                                <span class="expand-icon">▼</span>
-                            </button>
-                        </div>
-                        <div class="category-topics-container" data-category="ATTITUDINALI_LOGICO_VERBALI" style="display: none;">
-                            <div class="topics-list"></div>
-                        </div>
-                    </div>
-
+                    <!-- Category cards will be generated dynamically based on the loaded dataset -->
                 </div>
 
                 <hr style="width:100%;text-align:left;margin-left:0; margin-top: 1rem; margin-bottom: 1.5rem;">
@@ -110,7 +58,8 @@
 
                 <button id="start-btn" class="btn" type="button">Inizia quiz</button>
                 <button id="view-stats-btn" class="btn" style="background:#17a2b8;">Visualizza Statistiche</button>
-                <button id="clear-persistent" class="btn" style="background:#dc3545;" type="button">Cancella cronologia</button>
+                <button id="clear-persistent" class="btn" style="background:#dc3545;" type="button">Cancella
+                    cronologia</button>
                 <button id="back-to-main-btn" class="btn btn-tertiary">← Menù principale</button>
             </div>
         </div>
@@ -119,21 +68,28 @@
         <div id="stats-screen" class="screen" style="display: none;">
             <h2>📊 Statistiche Domande</h2>
             <p style="color: var(--text-color); margin-bottom: 1rem;">Panoramica delle tue performance per domanda</p>
-            
+
             <div style="margin-bottom: 1rem;">
-                <label>
+                <label style="margin-bottom: 1rem;">
+                    <p><strong>Set di domande:</strong></p>
+                    <select id="stats-dataset-filter"
+                        style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
+                        <option value="questions.json">Prova Preselettiva</option>
+                        <option value="questions_prova_scritta.json">Prova Scritta</option>
+                    </select>
+                </label>
+                <label style="margin-top: 1rem;">
                     <p><strong>Filtra per categoria:</strong></p>
-                    <select id="stats-category-filter" style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
+                    <select id="stats-category-filter"
+                        style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
                         <option value="all">Tutte le categorie</option>
-                        <option value="CULTURA_GENERALE">Cultura generale</option>
-                        <option value="ATTITUDINALI_LOGICO_DEDUTTIVI">Logico-deduttivi</option>
-                        <option value="ATTITUDINALI_LOGICO_MATEMATICI">Logico-matematici</option>
-                        <option value="ATTITUDINALI_LOGICO_VERBALI">Logico-verbali</option>
+                        <!-- Categories will be populated dynamically -->
                     </select>
                 </label>
                 <label style="margin-top: 1rem;">
                     <p><strong>Ordina per:</strong></p>
-                    <select id="stats-sort-order" style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
+                    <select id="stats-sort-order"
+                        style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
                         <option value="worst">Peggiori performance</option>
                         <option value="best">Migliori performance</option>
                         <option value="most-shown">Più viste</option>
@@ -142,50 +98,54 @@
                         <option value="least-likely">Meno probabili</option>
                         <option value="bookmarked">Preferite</option>
                         <option value="alphabetical">altro</option>
-                        
+
                     </select>
                 </label>
             </div>
-            
-            <div id="stats-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; margin-bottom: 2rem;"></div>
-            
-            <h3 id="dettaglio-domande-toggle" style="color: var(--text-color); margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+
+            <div id="stats-summary"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; margin-bottom: 2rem;">
+            </div>
+
+            <h3 id="dettaglio-domande-toggle"
+                style="color: var(--text-color); margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
                 <span id="dettaglio-domande-icon">▶</span> Dettaglio domande viste
             </h3>
             <div id="stats-list" style="max-height: 60vh; overflow-y: auto; display: none;"></div>
 
-            <h3 id="domande-non-viste-toggle" style="color: var(--text-color); margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+            <h3 id="domande-non-viste-toggle"
+                style="color: var(--text-color); margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
                 <span id="domande-non-viste-icon">▶</span> Domande non ancora viste
             </h3>
             <div id="unseen-questions-list" style="max-height: 60vh; overflow-y: auto; display: none;"></div>
 
             <!-- Charts section -->
-            <h3 id="accuratezza-tempo-toggle" style="color: var(--text-color); margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+            <h3 id="accuratezza-tempo-toggle"
+                style="color: var(--text-color); margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
                 <span id="accuratezza-tempo-icon">▶</span> Accuratezza nel tempo
             </h3>
             <div id="accuratezza-tempo-content" style="display: none;">
                 <div style="margin-bottom: 1rem; text-align: center;">
                     <label for="accuracy-filter">
                         <p><strong>Filtra per:</strong></p>
-                        <select id="accuracy-filter" style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
+                        <select id="accuracy-filter"
+                            style="flex: 1; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);">
                             <option value="overall">Accuratezza complessiva</option>
-                            <option value="CULTURA_GENERALE">Cultura generale</option>
-                            <option value="ATTITUDINALI_LOGICO_DEDUTTIVI">Logico-deduttivi</option>
-                            <option value="ATTITUDINALI_LOGICO_MATEMATICI">Logico-matematici</option>
-                            <option value="ATTITUDINALI_LOGICO_VERBALI">Logico-verbali</option>
+                            <!-- Categories will be populated dynamically -->
                         </select>
                     </label>
                 </div>
                 <canvas id="accuracy-chart" height="250"></canvas>
             </div>
-            
-            <h3 id="risultati-categoria-toggle" style="color: var(--text-color); margin-top: 1rem; margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+
+            <h3 id="risultati-categoria-toggle"
+                style="color: var(--text-color); margin-top: 1rem; margin-bottom: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
                 <span id="risultati-categoria-icon">▶</span> Risultati per categoria
             </h3>
             <div id="risultati-categoria-content" style="display: none;">
                 <canvas id="result-chart" height="300"></canvas>
             </div>
-            
+
             <button id="back-from-stats-btn" class="btn btn-tertiary" style="margin-top: 1rem;">← Torna al menu</button>
         </div>
 

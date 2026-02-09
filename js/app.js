@@ -1,7 +1,8 @@
 // Quiz Application Main Logic
 
 // Global constants and variables
-const CATEGORIE = ["CULTURA_GENERALE", "ATTITUDINALI_LOGICO_DEDUTTIVI", "ATTITUDINALI_LOGICO_MATEMATICI", "ATTITUDINALI_LOGICO_VERBALI"];
+let CATEGORIE = [];
+let currentDataset = 'questions.json'; // Default dataset
 
 let numDomande = 10;
 let tempoTotale = 0;
@@ -34,43 +35,56 @@ let userActivated = false;
 let selectionStrategy = 'random';
 
 // Load questions from JSON
-async function loadQuestions() {
+async function loadQuestions(datasetFile = null) {
+    if (datasetFile) {
+        currentDataset = datasetFile;
+    }
+
     try {
-        const response = await fetch('data/questions.json');
+        const response = await fetch(`data/${currentDataset}`);
         domande = await response.json();
+
+        // Extract categories dynamically from the loaded dataset
+        CATEGORIE = Object.keys(domande);
+
         window.domande = domande; // Make available globally for charts
         window.CATEGORIE = CATEGORIE; // Make available globally for charts
+
+        console.log(`Loaded dataset: ${currentDataset} with categories:`, CATEGORIE);
     } catch (error) {
         console.error("Error loading questions:", error);
-        // Fallback to embedded data
-        domande = {
-            CULTURA_GENERALE: [
-                {
-                    domanda: "1) Quale delle seguenti frasi contiene un aggettivo numerale cardinale?",
-                    risposte: ["Il mio amico Lassie è un animale a quattro zampe", "Alla notizia della promozione Federico era al settimo cielo", "L'appartamento al primo piano era poco luminoso"]
-                }
-            ],
-            ATTITUDINALI_LOGICO_DEDUTTIVI: [
-                {
-                    domanda: "501) Quale rapporto di parentela lega Antonio alla sorella del marito di sua cugina?",
-                    risposte: ["non c'è alcun rapporto di parentela", "zio/nipote", "cugini"]
-                }
-            ],
-            ATTITUDINALI_LOGICO_MATEMATICI: [
-                {
-                    domanda: "1001) Dividi il numero 56 in parti direttamente proporzionali ai numeri 1/4, 1/6, 3/4.",
-                    risposte: ["12; 8; 36", "11; 12; 33", "15; 2; 45"]
-                }
-            ],
-            ATTITUDINALI_LOGICO_VERBALI: [
-                {
-                    domanda: "1501) La parola \"portabagagli\" è composta da:",
-                    risposte: ["verbo + nome", "aggettivo + nome", "nome + aggettivo"]
-                }
-            ]
-        };
-        window.domande = domande;
-        window.CATEGORIE = CATEGORIE;
+        // Fallback to embedded data only for the original dataset
+        if (currentDataset === 'questions.json') {
+            domande = {
+                CULTURA_GENERALE: [
+                    {
+                        domanda: "1) Quale delle seguenti frasi contiene un aggettivo numerale cardinale?",
+                        risposte: ["Il mio amico Lassie è un animale a quattro zampe", "Alla notizia della promozione Federico era al settimo cielo", "L'appartamento al primo piano era poco luminoso"]
+                    }
+                ],
+                ATTITUDINALI_LOGICO_DEDUTTIVI: [
+                    {
+                        domanda: "501) Quale rapporto di parentela lega Antonio alla sorella del marito di sua cugina?",
+                        risposte: ["non c'è alcun rapporto di parentela", "zio/nipote", "cugini"]
+                    }
+                ],
+                ATTITUDINALI_LOGICO_MATEMATICI: [
+                    {
+                        domanda: "1001) Dividi il numero 56 in parti direttamente proporzionali ai numeri 1/4, 1/6, 3/4.",
+                        risposte: ["12; 8; 36", "11; 12; 33", "15; 2; 45"]
+                    }
+                ],
+                ATTITUDINALI_LOGICO_VERBALI: [
+                    {
+                        domanda: "1501) La parola \"portabagagli\" è composta da:",
+                        risposte: ["verbo + nome", "aggettivo + nome", "nome + aggettivo"]
+                    }
+                ]
+            };
+            CATEGORIE = Object.keys(domande);
+            window.domande = domande;
+            window.CATEGORIE = CATEGORIE;
+        }
     }
 }
 
@@ -109,18 +123,18 @@ const mostraSezione = (sezione) => {
     const mainMenu = document.getElementById('main-menu');
     const singleplayerMenu = document.getElementById('singleplayer-menu');
     const multiplayerMenu = document.getElementById('multiplayer-menu');
-    
+
     if (mainMenu) mainMenu.style.display = sezione === 'main-menu' ? "block" : "none";
     if (singleplayerMenu) singleplayerMenu.style.display = sezione === 'singleplayer-menu' ? "flex" : "none";
     if (multiplayerMenu) multiplayerMenu.style.display = sezione === 'multiplayer-menu' ? "block" : "none";
-    
+
     // Handle singleplayer.html screens (using screen class system)
     const setupScreen = document.getElementById('setupScreen');
     if (setupScreen) {
         setupScreen.style.display = sezione === 'singleplayer-menu' ? "block" : "none";
         setupScreen.classList.toggle('active', sezione === 'singleplayer-menu');
     }
-    
+
     // Handle shared sections
     if (quizContainer) {
         quizContainer.style.display = sezione === 'quiz' ? "flex" : "none";
@@ -133,32 +147,32 @@ const mostraSezione = (sezione) => {
 // Extract all unique topics from selected categories
 function getAvailableTopics(categories) {
     const topics = new Set();
-    
+
     categories.forEach(cat => {
         if (!domande[cat]) return;
-        
+
         domande[cat].forEach(q => {
             if (q.topic && q.topic.trim() !== "") {
                 topics.add(q.topic.trim());
             }
         });
     });
-    
+
     return Array.from(topics).sort();
 }
 
 // Get topics for a specific category
 function getTopicsForCategory(category) {
     const topics = new Set();
-    
+
     if (!domande[category]) return [];
-    
+
     domande[category].forEach(q => {
         if (q.topic && q.topic.trim() !== "") {
             topics.add(q.topic.trim());
         }
     });
-    
+
     return Array.from(topics).sort();
 }
 
@@ -166,10 +180,10 @@ function getTopicsForCategory(category) {
 function updateCategoryTopics(category) {
     const container = document.querySelector(`.category-topics-container[data-category="${category}"] .topics-list`);
     if (!container) return;
-    
+
     const topics = getTopicsForCategory(category);
     container.innerHTML = "";
-    
+
     if (topics.length === 0) {
         const p = document.createElement("p");
         p.style.color = "var(--text-muted)";
@@ -180,7 +194,7 @@ function updateCategoryTopics(category) {
         container.appendChild(p);
         return;
     }
-    
+
     // Calculate topic statistics - count questions per topic
     const topicStats = {};
     domande[category].forEach(q => {
@@ -189,13 +203,13 @@ function updateCategoryTopics(category) {
             topicStats[topic] = (topicStats[topic] || 0) + 1;
         }
     });
-    
+
     // Calculate correct/wrong answers per topic from persistent storage
     const topicAnswerStats = {};
     topics.forEach(topic => {
         topicAnswerStats[topic] = { correct: 0, wrong: 0, uniqueQuestionsViewed: 0 };
     });
-    
+
     // Get question statistics from storage
     const questionStats = SafeStorage.get("questionStats") || {};
     domande[category].forEach(q => {
@@ -211,14 +225,14 @@ function updateCategoryTopics(category) {
             }
         }
     });
-    
+
     // Add "select all" for this category
     const selectAllDiv = document.createElement("div");
     selectAllDiv.className = "topic-item select-all-topics";
-    
+
     const selectAllHeader = document.createElement("div");
     selectAllHeader.className = "topic-item-header";
-    
+
     const selectAllCheckbox = document.createElement("input");
     selectAllCheckbox.type = "checkbox";
     selectAllCheckbox.id = `select-all-${category}`;
@@ -227,27 +241,27 @@ function updateCategoryTopics(category) {
         const topicCheckboxes = container.querySelectorAll('.topic-checkbox');
         topicCheckboxes.forEach(cb => cb.checked = e.target.checked);
     });
-    
+
     const selectAllLabel = document.createElement("label");
     selectAllLabel.htmlFor = `select-all-${category}`;
     selectAllLabel.className = "topic-item-label";
     selectAllLabel.textContent = "Seleziona tutti";
     selectAllLabel.style.fontWeight = "bold";
     selectAllLabel.style.cursor = "pointer";
-    
+
     selectAllHeader.appendChild(selectAllCheckbox);
     selectAllHeader.appendChild(selectAllLabel);
     selectAllDiv.appendChild(selectAllHeader);
     container.appendChild(selectAllDiv);
-    
+
     // Add individual topics
     topics.forEach((topic, index) => {
         const topicDiv = document.createElement("div");
         topicDiv.className = "topic-item";
-        
+
         const topicHeader = document.createElement("div");
         topicHeader.className = "topic-item-header";
-        
+
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.value = topic;
@@ -261,13 +275,13 @@ function updateCategoryTopics(category) {
             const selectAllCb = document.getElementById(`select-all-${category}`);
             if (selectAllCb) selectAllCb.checked = allChecked;
         });
-        
+
         const label = document.createElement("label");
         label.htmlFor = `topic-${category}-${index}`;
         label.className = "topic-item-label";
         label.textContent = topic;
         label.style.cursor = "pointer";
-        
+
         const badge = document.createElement("span");
         badge.style.marginLeft = "auto";
         badge.style.padding = "0.25rem 0.5rem";
@@ -277,19 +291,19 @@ function updateCategoryTopics(category) {
         badge.style.fontWeight = "bold";
         badge.style.color = "var(--text-secondary)";
         badge.textContent = `${topicAnswerStats[topic].uniqueQuestionsViewed}/${topicStats[topic] || 0}`;
-        
+
         topicHeader.appendChild(checkbox);
         topicHeader.appendChild(label);
         topicHeader.appendChild(badge);
-        
+
         const progressBar = document.createElement("div");
         progressBar.className = "topic-progress-bar";
-        
+
         // Calculate percentages for correct and wrong answers
         const totalAnswered = topicAnswerStats[topic].correct + topicAnswerStats[topic].wrong;
         const correctPerc = totalAnswered > 0 ? (topicAnswerStats[topic].correct / totalAnswered * 100) : 0;
         const wrongPerc = totalAnswered > 0 ? (topicAnswerStats[topic].wrong / totalAnswered * 100) : 0;
-        
+
         // Create correct answers section (green)
         if (correctPerc > 0) {
             const correctFill = document.createElement("div");
@@ -297,7 +311,7 @@ function updateCategoryTopics(category) {
             correctFill.style.width = `${correctPerc}%`;
             progressBar.appendChild(correctFill);
         }
-        
+
         // Create wrong answers section (red)
         if (wrongPerc > 0) {
             const wrongFill = document.createElement("div");
@@ -305,27 +319,92 @@ function updateCategoryTopics(category) {
             wrongFill.style.width = `${wrongPerc}%`;
             progressBar.appendChild(wrongFill);
         }
-        
+
         topicDiv.appendChild(topicHeader);
         topicDiv.appendChild(progressBar);
-        
+
         topicDiv.addEventListener('click', (e) => {
             if (e.target !== checkbox && e.target !== label) {
                 checkbox.checked = !checkbox.checked;
                 checkbox.dispatchEvent(new Event('change'));
             }
         });
-        
+
         container.appendChild(topicDiv);
     });
 }
 
 // Update topic checkboxes based on selected categories
+// Generate category cards dynamically based on loaded dataset
+function generateCategoryCards() {
+    const container = document.getElementById('category-cards-container');
+    if (!container) return;
+
+    // Clear existing cards
+    container.innerHTML = '';
+
+    // Create a card for each category
+    CATEGORIE.forEach((category, index) => {
+        const card = document.createElement('div');
+        card.className = 'category-expandable-card';
+        card.dataset.category = category;
+
+        // Create a friendly name for the category
+        const categoryName = category.replace(/_/g, ' ').toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+
+        const cardId = `cat-${index}`;
+
+        card.innerHTML = `
+            <div class="category-expandable-header">
+                <input type="checkbox" value="${category}" class="category-checkbox" checked id="${cardId}">
+                <label for="${cardId}" class="category-expandable-label">
+                    <span class="category-title">${categoryName}</span>
+                </label>
+                <button class="category-expand-btn" data-category="${category}">
+                    <span class="expand-icon">▼</span>
+                </button>
+            </div>
+            <div class="category-topics-container" data-category="${category}" style="display: none;">
+                <div class="topics-list"></div>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+
+    // Re-attach event listeners for expand buttons
+    const expandButtons = container.querySelectorAll('.category-expand-btn');
+    expandButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const category = btn.dataset.category;
+            const topicsContainer = container.querySelector(`.category-topics-container[data-category="${category}"]`);
+            const expandIcon = btn.querySelector('.expand-icon');
+
+            if (topicsContainer.style.display === 'none') {
+                topicsContainer.style.display = 'block';
+                expandIcon.textContent = '▲';
+                // Load topics if not already loaded
+                if (topicsContainer.querySelector('.topics-list').children.length === 0) {
+                    updateCategoryTopics(category);
+                }
+            } else {
+                topicsContainer.style.display = 'none';
+                expandIcon.textContent = '▼';
+            }
+        });
+    });
+}
+
 function updateTopicCheckboxes() {
-    // This function is now handled by updateCategoryTopics for each category
-    // We'll update all categories on page load
-    const categories = ['CULTURA_GENERALE', 'ATTITUDINALI_LOGICO_DEDUTTIVI', 'ATTITUDINALI_LOGICO_MATEMATICI', 'ATTITUDINALI_LOGICO_VERBALI'];
-    categories.forEach(cat => {
+    // Generate category cards dynamically
+    generateCategoryCards();
+
+    // Update all categories with topics
+    CATEGORIE.forEach(cat => {
         updateCategoryTopics(cat);
     });
 }
@@ -333,7 +412,7 @@ function updateTopicCheckboxes() {
 function avviaQuiz() {
     const checkboxes = categoryMenu.querySelectorAll(".category-checkbox:checked");
     selectedCategories = Array.from(checkboxes).map(cb => cb.value).filter(val => val !== "only-saved-questions");
-    
+
     // Get selected topics only from selected categories
     selectedTopics = [];
     selectedCategories.forEach(category => {
@@ -341,11 +420,11 @@ function avviaQuiz() {
         const categoryTopics = Array.from(categoryTopicCheckboxes).map(cb => cb.value);
         selectedTopics.push(...categoryTopics);
     });
-    
+
     numDomande = parseInt(numDomandeSelect.value);
     tempoTotale = parseInt(timerInput.value) * 60;
     tempoRimanente = tempoTotale;
-    
+
     // Get selection strategy
     if (selectionStrategySelect) {
         selectionStrategy = selectionStrategySelect.value;
@@ -418,7 +497,7 @@ function updateQuestionStats(questionId, wasCorrect) {
             lastShown: 0
         };
     }
-    
+
     stats[questionId].timesShown++;
     if (wasCorrect) {
         stats[questionId].timesCorrect++;
@@ -426,9 +505,9 @@ function updateQuestionStats(questionId, wasCorrect) {
         stats[questionId].timesWrong++;
     }
     stats[questionId].lastShown = Date.now();
-    
+
     SafeStorage.set("questionStats", stats);
-    
+
     // Note: Don't clear probability cache here - it's only used in statistics screen
     // and will be recalculated when statistics screen is opened
 }
@@ -437,7 +516,7 @@ function calculateQuestionWeight(questionId, cachedStats, cachedSavedQuestions, 
     if (strategy === 'random') {
         return 1; // All questions have equal weight
     }
-    
+
     // Adaptive strategy
     const stats = cachedStats[questionId] || {
         timesShown: 0,
@@ -445,30 +524,30 @@ function calculateQuestionWeight(questionId, cachedStats, cachedSavedQuestions, 
         timesWrong: 0,
         lastShown: 0
     };
-    
+
     // Never seen before gets highest priority
     if (stats.timesShown === 0) {
         return 100;
     }
-    
+
     // Calculate success rate
     const successRate = stats.timesCorrect / stats.timesShown;
-    
+
     // Lower success rate = higher weight (more likely to be shown)
     // Weight formula: inverse of success rate, scaled
     let weight = 1 / (successRate + 0.1); // Add 0.1 to avoid division by zero
-    
+
     // Boost weight for questions not shown recently
     const daysSinceLastShown = (Date.now() - stats.lastShown) / (1000 * 60 * 60 * 24);
     if (daysSinceLastShown > 5) {
         weight *= 1.5; // 50% boost if not shown in 5 days
     }
-    
+
     // Boost bookmarked questions (2x multiplier)
     if (cachedSavedQuestions.includes(questionId)) {
         weight *= 2.0; // 100% boost for bookmarked questions
     }
-    
+
     return weight;
 }
 
@@ -477,11 +556,11 @@ function selectWeightedQuestion(availableQuestions, cachedStats, cachedSavedQues
         // Pure random selection
         return availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
     }
-    
+
     // Weighted selection for adaptive strategy
     const weights = availableQuestions.map(q => calculateQuestionWeight(q.id, cachedStats, cachedSavedQuestions, selectionStrategy));
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-    
+
     let random = Math.random() * totalWeight;
     for (let i = 0; i < availableQuestions.length; i++) {
         random -= weights[i];
@@ -489,7 +568,7 @@ function selectWeightedQuestion(availableQuestions, cachedStats, cachedSavedQues
             return availableQuestions[i];
         }
     }
-    
+
     // Fallback
     return availableQuestions[availableQuestions.length - 1];
 }
@@ -606,8 +685,8 @@ function populateStatistics(filterCategory = 'all', sortOrder = 'worst') {
         for (const [questionId, stats] of Object.entries(allStats)) {
             const [category, questionText] = questionId.split('::');
             if (filterCategory !== 'all' && category !== filterCategory) continue;
-            const successRate = stats.timesShown > 0 
-                ? (stats.timesCorrect / stats.timesShown) * 100 
+            const successRate = stats.timesShown > 0
+                ? (stats.timesCorrect / stats.timesShown) * 100
                 : 0;
             const probability = (allProbabilities[questionId] || 0)
             const isBookmarked = savedQuestions.includes(questionId);
@@ -753,21 +832,21 @@ function populateUnseenQuestions(filterCategory = 'all', allProbabilities = {}) 
     const allStats = SafeStorage.get("questionStats") || {};
     const unseenQuestions = [];
     const savedQuestions = SafeStorage.get("savedQuestions") || [];
-    
+
     // Get categories to check
     const categories = filterCategory === 'all' ? CATEGORIE : [filterCategory];
-    
+
     // Find all questions that have never been shown (don't calculate probabilities yet)
     categories.forEach(cat => {
         if (domande[cat]) {
             domande[cat].forEach(q => {
                 const questionId = `${cat}::${q.domanda}`;
                 const stats = allStats[questionId];
-                
+
                 // Include if never shown (stats don't exist or timesShown is 0)
                 if (!stats || stats.timesShown === 0) {
                     const isBookmarked = savedQuestions.includes(questionId);
-                    
+
                     unseenQuestions.push({
                         id: questionId,
                         category: cat,
@@ -779,17 +858,17 @@ function populateUnseenQuestions(filterCategory = 'all', allProbabilities = {}) 
             });
         }
     });
-    
+
     const unseenList = document.getElementById('unseen-questions-list');
-    
+
     if (unseenQuestions.length === 0) {
         unseenList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Hai già visto tutte le domande disponibili! 🎉</p>';
         return;
     }
-    
+
     // Show count first
     unseenList.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Trovate ${unseenQuestions.length} domande non viste. Calcolo probabilità...</p>`;
-    
+
     // Render immediately
     setTimeout(() => {
         renderUnseenQuestions(unseenQuestions, allProbabilities);
@@ -865,30 +944,40 @@ function showStatsScreen() {
     const statsScreen = document.getElementById('stats-screen');
     const quizScreen = document.getElementById('quiz');
     const summaryScreen = document.getElementById('summary');
-    
+
     if (setupScreen) setupScreen.style.display = 'none';
     if (quizScreen) quizScreen.style.display = 'none';
     if (summaryScreen) summaryScreen.style.display = 'none';
     if (statsScreen) {
         statsScreen.style.display = 'block';
-        
+
+        // Set dataset filter to current dataset
+        const datasetFilter = document.getElementById('stats-dataset-filter');
+        if (datasetFilter) {
+            datasetFilter.value = currentDataset;
+        }
+
+        // Populate category filter dropdown dynamically
+        populateStatsCategoryFilter();
+        populateAccuracyFilter();
+
         // Show loading indicator
         const statsList = document.getElementById('stats-list');
         const unseenList = document.getElementById('unseen-questions-list');
         if (statsList) statsList.innerHTML = '<p style="text-align: center; padding: 2rem;">Caricamento statistiche...</p>';
         if (unseenList) unseenList.innerHTML = '<p style="text-align: center; padding: 2rem;">Caricamento...</p>';
-        
+
         // Defer heavy calculations to avoid blocking UI
         setTimeout(() => {
             populateStatistics(); // Load with defaults (now optimized)
-            
+
             // Initialize toggle handlers
             initDettaglioDomandeToggle();
             initDomandeNonVisteToggle();
             initAccuratezzaTempoToggle();
             initRisultatiCategoriaToggle();
         }, 50);
-        
+
         // Draw charts after a brief delay to let UI update
         setTimeout(() => {
             if (typeof disegnaGraficoAccuratezza === 'function') {
@@ -901,22 +990,62 @@ function showStatsScreen() {
     }
 }
 
+// Populate stats category filter dropdown dynamically
+function populateStatsCategoryFilter() {
+    const filterSelect = document.getElementById('stats-category-filter');
+    if (!filterSelect) return;
+
+    // Clear existing options except "All"
+    filterSelect.innerHTML = '<option value="all">Tutte le categorie</option>';
+
+    // Add options for each category
+    CATEGORIE.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category.replace(/_/g, ' ').toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+        filterSelect.appendChild(option);
+    });
+}
+
+function populateAccuracyFilter() {
+    const filterSelect = document.getElementById('accuracy-filter');
+    if (!filterSelect) return;
+
+    // Clear existing options except "Overall"
+    filterSelect.innerHTML = '<option value="overall">Accuratezza complessiva</option>';
+
+    // Add options for each category
+    CATEGORIE.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category.replace(/_/g, ' ').toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+        filterSelect.appendChild(option);
+    });
+}
+
+
 function initDettaglioDomandeToggle() {
     const toggle = document.getElementById('dettaglio-domande-toggle');
     const icon = document.getElementById('dettaglio-domande-icon');
     const statsList = document.getElementById('stats-list');
-    
+
     if (!toggle || !icon || !statsList) return;
-    
+
     // Remove existing listener if any
     const newToggle = toggle.cloneNode(true);
     toggle.parentNode.replaceChild(newToggle, toggle);
-    
+
     // Get updated references
     const updatedToggle = document.getElementById('dettaglio-domande-toggle');
     const updatedIcon = document.getElementById('dettaglio-domande-icon');
     const updatedStatsList = document.getElementById('stats-list');
-    
+
     updatedToggle.addEventListener('click', () => {
         if (updatedStatsList.style.display === 'none') {
             updatedStatsList.style.display = 'block';
@@ -932,18 +1061,18 @@ function initDomandeNonVisteToggle() {
     const toggle = document.getElementById('domande-non-viste-toggle');
     const icon = document.getElementById('domande-non-viste-icon');
     const list = document.getElementById('unseen-questions-list');
-    
+
     if (!toggle || !icon || !list) return;
-    
+
     // Remove existing listener if any
     const newToggle = toggle.cloneNode(true);
     toggle.parentNode.replaceChild(newToggle, toggle);
-    
+
     // Get updated references
     const updatedToggle = document.getElementById('domande-non-viste-toggle');
     const updatedIcon = document.getElementById('domande-non-viste-icon');
     const updatedList = document.getElementById('unseen-questions-list');
-    
+
     updatedToggle.addEventListener('click', () => {
         if (updatedList.style.display === 'none') {
             updatedList.style.display = 'block';
@@ -959,18 +1088,18 @@ function initAccuratezzaTempoToggle() {
     const toggle = document.getElementById('accuratezza-tempo-toggle');
     const icon = document.getElementById('accuratezza-tempo-icon');
     const content = document.getElementById('accuratezza-tempo-content');
-    
+
     if (!toggle || !icon || !content) return;
-    
+
     // Remove existing listener if any
     const newToggle = toggle.cloneNode(true);
     toggle.parentNode.replaceChild(newToggle, toggle);
-    
+
     // Get updated references
     const updatedToggle = document.getElementById('accuratezza-tempo-toggle');
     const updatedIcon = document.getElementById('accuratezza-tempo-icon');
     const updatedContent = document.getElementById('accuratezza-tempo-content');
-    
+
     updatedToggle.addEventListener('click', () => {
         if (updatedContent.style.display === 'none') {
             updatedContent.style.display = 'block';
@@ -990,18 +1119,18 @@ function initRisultatiCategoriaToggle() {
     const toggle = document.getElementById('risultati-categoria-toggle');
     const icon = document.getElementById('risultati-categoria-icon');
     const content = document.getElementById('risultati-categoria-content');
-    
+
     if (!toggle || !icon || !content) return;
-    
+
     // Remove existing listener if any
     const newToggle = toggle.cloneNode(true);
     toggle.parentNode.replaceChild(newToggle, toggle);
-    
+
     // Get updated references
     const updatedToggle = document.getElementById('risultati-categoria-toggle');
     const updatedIcon = document.getElementById('risultati-categoria-icon');
     const updatedContent = document.getElementById('risultati-categoria-content');
-    
+
     updatedToggle.addEventListener('click', () => {
         if (updatedContent.style.display === 'none') {
             updatedContent.style.display = 'block';
@@ -1020,7 +1149,7 @@ function initRisultatiCategoriaToggle() {
 function hideStatsScreen() {
     const setupScreen = document.getElementById('setupScreen');
     const statsScreen = document.getElementById('stats-screen');
-    
+
     if (statsScreen) statsScreen.style.display = 'none';
     if (setupScreen) setupScreen.style.display = 'block';
 }
@@ -1044,7 +1173,7 @@ function nuovaDomanda() {
     const savedQuestions = SafeStorage.get("savedQuestions") || [];
     const questionStats = SafeStorage.get("questionStats") || {};
     const onlySaved = onlySavedCheckbox.checked;
-    
+
     // Convert to Set for O(1) lookup instead of O(n)
     const domandeUsateSet = new Set(domandeUsate);
     const savedQuestionsSet = onlySaved ? new Set(savedQuestions) : null;
@@ -1087,7 +1216,7 @@ function nuovaDomanda() {
             domande[cat].forEach(q => {
                 const domandaId = `${cat}::${q.domanda}`;
                 if (onlySaved && !savedQuestionsSet.has(domandaId)) return;
-                
+
                 // Filter by topic if topics are selected
                 if (selectedTopics.length > 0) {
                     const questionTopic = q.topic ? q.topic.trim() : "";
@@ -1095,7 +1224,7 @@ function nuovaDomanda() {
                         return;
                     }
                 }
-                
+
                 domandeDisponibili.push({ categoria: cat, domanda: q, id: domandaId });
             });
         });
@@ -1131,7 +1260,7 @@ function nuovaDomanda() {
 
     // Store the correct answer before shuffling (first answer is correct by default)
     correctAnswer = q.risposte[0];
-    
+
     // Shuffle the answers
     const risposteMischiate = [...q.risposte].sort(() => Math.random() - 0.5);
 
@@ -1216,7 +1345,7 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
     buttons.forEach(b => b.disabled = true);
 
     const isCorrect = risposta === correctAnswer;
-    
+
     // Apply visual feedback FIRST (before any localStorage operations)
     if (isCorrect) {
         btn.classList.add("correct");
@@ -1232,7 +1361,7 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
     aggiornaPunteggio();
     aggiornaProgressBar();
     nextBtn.disabled = false;
-    
+
     // Now do all the heavy lifting in background (after visual feedback is done)
     setTimeout(() => {
         // Update question statistics
@@ -1245,7 +1374,7 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
                 rispostaCorretta: correctAnswer,
                 categoria: currentCategory
             });
-            
+
             const correttePersistenti = SafeStorage.get("corretteQuiz") || [];
             correttePersistenti.push({
                 domanda: domandaCorrente.domanda,
@@ -1261,7 +1390,7 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
                 rispostaCorretta: correctAnswer,
                 categoria: currentCategory
             });
-            
+
             const erroriPersistenti = SafeStorage.get("erroriQuiz") || [];
             erroriPersistenti.push({
                 domanda: domandaCorrente.domanda,
@@ -1276,7 +1405,7 @@ function selezionaRisposta(risposta, btn, domandaCorrente) {
             quizHistory[currentQuestionIndex].rispostaData = risposta;
             quizHistory[currentQuestionIndex].answered = true;
         }
-        
+
         // Update result chart in real-time if stats screen is visible
         const statsScreen = document.getElementById('stats-screen');
         if (statsScreen && statsScreen.style.display === 'block' && typeof disegnaGraficoRisultati === 'function') {
@@ -1395,7 +1524,7 @@ function aggiornaBookmarkButton() {
 function tornaAlMenu() {
     clearInterval(timerInterval);
     timerEl.textContent = "";
-    
+
     // Check if we're on singleplayer.html or index.html
     if (window.location.pathname.includes('singleplayer.html')) {
         window.location.href = 'index.html';
@@ -1404,14 +1533,14 @@ function tornaAlMenu() {
         const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']");
         checkboxes.forEach(cb => cb.checked = false);
     }
-    
+
     quizInCorso = false;
 }
 
 // Load and apply quiz settings
 function loadQuizSettings() {
     const savedSettings = SafeStorage.get("quizSettings");
-    
+
     // Default settings
     const defaults = {
         categories: CATEGORIE, // All categories selected
@@ -1420,9 +1549,9 @@ function loadQuizSettings() {
         onlySavedQuestions: false,
         selectionStrategy: 'adaptive'
     };
-    
+
     const settings = savedSettings || defaults;
-    
+
     // Apply category selections
     if (categoryMenu) {
         const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']");
@@ -1433,7 +1562,7 @@ function loadQuizSettings() {
             cb.checked = settings.categories.includes(cb.value);
         });
     }
-    
+
     // Apply other settings
     if (numDomandeSelect) numDomandeSelect.value = settings.numDomande;
     if (timerInput) timerInput.value = settings.timer;
@@ -1444,12 +1573,12 @@ function loadQuizSettings() {
 // Save quiz settings
 function saveQuizSettings() {
     if (!categoryMenu) return;
-    
+
     const checkboxes = categoryMenu.querySelectorAll("input[type='checkbox']:checked");
     const categories = Array.from(checkboxes)
         .map(cb => cb.value)
         .filter(val => val !== "only-saved-questions");
-    
+
     const settings = {
         categories: categories,
         numDomande: numDomandeSelect ? parseInt(numDomandeSelect.value) : 30,
@@ -1457,7 +1586,7 @@ function saveQuizSettings() {
         onlySavedQuestions: onlySavedCheckbox ? onlySavedCheckbox.checked : false,
         selectionStrategy: selectionStrategySelect ? selectionStrategySelect.value : 'adaptive'
     };
-    
+
     SafeStorage.set("quizSettings", settings);
 }
 
@@ -1478,43 +1607,37 @@ function initializeEventListeners() {
         });
     }
 
-    // Category expand/collapse buttons
-    const expandButtons = document.querySelectorAll('.category-expand-btn');
-    expandButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const category = btn.dataset.category;
-            const container = document.querySelector(`.category-topics-container[data-category="${category}"]`);
-            
-            if (container) {
-                const isVisible = container.style.display !== 'none';
-                container.style.display = isVisible ? 'none' : 'block';
-                btn.classList.toggle('expanded', !isVisible);
-            }
-        });
-    });
-
-    // Category checkboxes - update topics when categories change
-    const categoryCheckboxes = document.querySelectorAll('.category-checkbox');
-    categoryCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            const category = checkbox.value;
-            const topicsContainer = document.querySelector(`.category-topics-container[data-category="${category}"]`);
-            
-            // If unchecked, collapse the topics
-            if (!checkbox.checked && topicsContainer) {
-                topicsContainer.style.display = 'none';
-                const expandBtn = document.querySelector(`.category-expand-btn[data-category="${category}"]`);
-                if (expandBtn) expandBtn.classList.remove('expanded');
-            }
-        });
-    });
-
     // Back to main menu buttons
     const backToMainBtn = document.getElementById("back-to-main-btn");
     if (backToMainBtn) {
         backToMainBtn.addEventListener("click", () => {
             window.location.href = 'index.html';
+        });
+    }
+
+    // Dataset switcher in singleplayer view
+    const datasetSwitcher = document.getElementById("dataset-switcher");
+    if (datasetSwitcher) {
+        // Set initial value from current dataset
+        datasetSwitcher.value = currentDataset;
+
+        datasetSwitcher.addEventListener("change", async () => {
+            const selectedDataset = datasetSwitcher.value;
+
+            // Show loading indicator
+            const container = document.getElementById('category-cards-container');
+            if (container) {
+                container.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--text-secondary);">Caricamento domande...</p>';
+            }
+
+            // Load the new dataset
+            await loadQuestions(selectedDataset);
+            window.currentDataset = currentDataset;
+
+            // Regenerate category cards and topics
+            updateTopicCheckboxes();
+
+            console.log(`Switched to dataset: ${selectedDataset}`);
         });
     }
 
@@ -1607,7 +1730,7 @@ function initializeEventListeners() {
             SafeStorage.remove("questionStats");
             SafeStorage.remove("quizSettings");
             alert("Cronologia, domande salvate e impostazioni preferite cancellate.");
-            
+
             // Reload settings to apply defaults
             loadQuizSettings();
         });
@@ -1625,6 +1748,40 @@ function initializeEventListeners() {
     if (backFromStatsBtn) {
         backFromStatsBtn.addEventListener("click", () => {
             hideStatsScreen();
+        });
+    }
+
+    const statsDatasetFilter = document.getElementById("stats-dataset-filter");
+    if (statsDatasetFilter) {
+        statsDatasetFilter.addEventListener("change", async () => {
+            const selectedDataset = statsDatasetFilter.value;
+
+            // Show loading indicator
+            const statsList = document.getElementById('stats-list');
+            const unseenList = document.getElementById('unseen-questions-list');
+            if (statsList) statsList.innerHTML = '<p style="text-align: center; padding: 2rem;">Caricamento...</p>';
+            if (unseenList) unseenList.innerHTML = '<p style="text-align: center; padding: 2rem;">Caricamento...</p>';
+
+            // Load the new dataset
+            await loadQuestions(selectedDataset);
+            window.currentDataset = currentDataset;
+
+            // Update category filter with new categories
+            populateStatsCategoryFilter();
+            populateAccuracyFilter();
+
+            // Reload statistics
+            const filterValue = document.getElementById("stats-category-filter")?.value || 'all';
+            const sortValue = document.getElementById("stats-sort-order")?.value || 'worst';
+            populateStatistics(filterValue, sortValue);
+
+            // Redraw charts
+            if (typeof disegnaGraficoAccuratezza === 'function') {
+                disegnaGraficoAccuratezza();
+            }
+            if (typeof disegnaGraficoRisultati === 'function') {
+                disegnaGraficoRisultati();
+            }
         });
     }
 
@@ -1715,13 +1872,61 @@ function initializeEventListeners() {
     }
 }
 
+// Migrate old statistics to new namespaced format
+function migrateOldStatistics() {
+    try {
+        // Check if old statistics exist (without namespace)
+        const oldStats = localStorage.getItem('questionStats');
+        const oldSaved = localStorage.getItem('savedQuestions');
+        const oldSettings = localStorage.getItem('quizSettings');
+        
+        // Check if new statistics already exist for questions.json
+        const newStatsKey = 'q_questionStats';
+        const newStats = localStorage.getItem(newStatsKey);
+        
+        // Only migrate if old data exists and new data doesn't
+        if (oldStats && !newStats) {
+            console.log('Migrating old statistics to new format...');
+            localStorage.setItem(newStatsKey, oldStats);
+            console.log('Statistics migrated to:', newStatsKey);
+        }
+        
+        if (oldSaved && !localStorage.getItem('q_savedQuestions')) {
+            localStorage.setItem('q_savedQuestions', oldSaved);
+            console.log('Saved questions migrated');
+        }
+        
+        if (oldSettings && !localStorage.getItem('q_quizSettings')) {
+            localStorage.setItem('q_quizSettings', oldSettings);
+            console.log('Quiz settings migrated');
+        }
+    } catch (e) {
+        console.warn('Could not migrate old statistics:', e);
+    }
+}
+
 // Initialize app
 document.addEventListener("DOMContentLoaded", async () => {
-    await loadQuestions();
+    // Migrate old statistics before anything else
+    migrateOldStatistics();
+    
+    // Check if there's a dataset parameter in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const datasetParam = urlParams.get('dataset');
+
+    if (datasetParam) {
+        await loadQuestions(datasetParam);
+    } else {
+        await loadQuestions();
+    }
+
+    // Make currentDataset available globally for SafeStorage
+    window.currentDataset = currentDataset;
+
     initDomElements();
     initializeEventListeners();
     initializeChartListeners();
-    
+
     // Load saved quiz settings or apply defaults
     loadQuizSettings();
 
@@ -1741,7 +1946,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // Prevent user from leaving page during quiz
-window.addEventListener('beforeunload', function(e) {
+window.addEventListener('beforeunload', function (e) {
     if (quizInCorso) {
         // Cancel the event
         e.preventDefault();
@@ -1752,11 +1957,11 @@ window.addEventListener('beforeunload', function(e) {
 });
 
 // Make toggleAnswers globally accessible for onclick handlers
-window.toggleAnswers = function(index) {
+window.toggleAnswers = function (index) {
     const answersDiv = document.getElementById(`answers-${index}`);
     const toggleIcon = document.getElementById(`toggle-icon-${index}`);
     const questionText = document.getElementById(`question-text-${index}`);
-    
+
     if (answersDiv) {
         if (answersDiv.style.display === 'none') {
             answersDiv.style.display = 'block';
@@ -1771,11 +1976,11 @@ window.toggleAnswers = function(index) {
 };
 
 // Make toggleUnseenAnswers globally accessible for onclick handlers
-window.toggleUnseenAnswers = function(index) {
+window.toggleUnseenAnswers = function (index) {
     const answersDiv = document.getElementById(`unseen-answers-${index}`);
     const toggleIcon = document.getElementById(`unseen-toggle-icon-${index}`);
     const questionText = document.getElementById(`unseen-question-text-${index}`);
-    
+
     if (answersDiv) {
         if (answersDiv.style.display === 'none') {
             answersDiv.style.display = 'block';
