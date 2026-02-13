@@ -23,10 +23,13 @@ class MultiplayerQuiz {
     // Configuration
     this.maxPlayers = 10;
     this.minPlayers = 2;
+    this.timerDuration = 30; // Default timer
+    this.scoringSystem = 'standard'; // Default scoring system: 'standard' or 'exam'
+    
+    // Standard scoring system
     this.basePoints = 100;
     this.speedBonusMax = 50;
     this.wrongPenalty = 25;
-    this.timerDuration = 30; // Default timer
   }
 
   // Generate a 6-character room code
@@ -51,13 +54,14 @@ class MultiplayerQuiz {
   }
 
   // Create a new room
-  async createRoom(playerName, numQuestions, timer) {
+  async createRoom(playerName, numQuestions, timer, scoringSystem = 'standard') {
     try {
       this.roomCode = this.generateRoomCode();
       this.playerName = playerName;
       this.isHost = true;
       this.hostId = this.playerId;
       this.timerDuration = timer;
+      this.scoringSystem = scoringSystem;
 
       // Select random questions
       this.questions = this.selectRandomQuestions(numQuestions);
@@ -71,6 +75,7 @@ class MultiplayerQuiz {
         currentQuestion: 0,
         numQuestions: numQuestions,
         timer: timer,
+        scoringSystem: scoringSystem,
         questionsVersion: 0, // Track when questions change
         players: {
           [this.playerId]: {
@@ -137,6 +142,7 @@ class MultiplayerQuiz {
       this.questions = roomData.questions;
       this.timerDuration = roomData.timer;
       this.numQuestions = roomData.numQuestions; // Store the configured number
+      this.scoringSystem = roomData.scoringSystem || 'standard'; // Load scoring system (default to standard for backwards compatibility)
       this.setupListeners();
 
       return true;
@@ -296,21 +302,35 @@ class MultiplayerQuiz {
   }
 
   // Helper function to calculate and update score
-  async calculateAndUpdateScore(answerRef, isCorrect, timeElapsed) {
-    // Calculate score
+  async calculateAndUpdateScore(answerRef, isCorrect, timeElapsed, isNoAnswer = false) {
+    // Calculate score based on scoring system
     let points = 0;
-    // Speed ratio from 0.1 (slowest) to 1.0 (fastest) - always has some impact
-    const speedRatio = Math.max(0.1, 1 - (timeElapsed / this.timerDuration));
 
-    if (isCorrect) {
-      // Base points + speed bonus (more points for faster correct answers)
-      const speedBonus = Math.floor(this.speedBonusMax * speedRatio);
-      points = this.basePoints + speedBonus;
+    if (this.scoringSystem === 'exam') {
+      // Exam scoring system: +1 for correct, -0.17 for wrong, 0 for no answer
+      if (isNoAnswer) {
+        points = 0; // No answer = 0 points
+      } else if (isCorrect) {
+        points = 1;
+      } else {
+        // Use fraction to avoid floating point issues: -17/100 = -0.17
+        points = Math.round(-17 / 100 * 100) / 100; // -0.17 exactly
+      }
     } else {
-      // Penalty for wrong answer, increased for faster wrong answers
-      // Fast wrong answers get bigger penalty (up to 3x the base penalty)
-      const speedPenaltyMultiplier = 1 + (speedRatio * 2); // 1.2x to 3x penalty
-      points = -Math.floor(this.wrongPenalty * speedPenaltyMultiplier);
+      // Standard scoring system: base points + speed bonus
+      // Speed ratio from 0.1 (slowest) to 1.0 (fastest) - always has some impact
+      const speedRatio = Math.max(0.1, 1 - (timeElapsed / this.timerDuration));
+
+      if (isCorrect) {
+        // Base points + speed bonus (more points for faster correct answers)
+        const speedBonus = Math.floor(this.speedBonusMax * speedRatio);
+        points = this.basePoints + speedBonus;
+      } else {
+        // Penalty for wrong answer, increased for faster wrong answers
+        // Fast wrong answers get bigger penalty (up to 3x the base penalty)
+        const speedPenaltyMultiplier = 1 + (speedRatio * 2); // 1.2x to 3x penalty
+        points = -Math.floor(this.wrongPenalty * speedPenaltyMultiplier);
+      }
     }
 
     // Update the answer with time and points
@@ -336,12 +356,14 @@ class MultiplayerQuiz {
 
     const currentQuestion = this.questions[this.currentQuestionIndex];
     const isCorrect = answerIndex === currentQuestion.rispostaCorretta;
+    const isNoAnswer = answerIndex === -1; // Track if user didn't answer
 
     // Write answer with server timestamp first
     const answerRef = this.roomRef.child(`answers/${this.currentQuestionIndex}/${this.playerId}`);
     await answerRef.set({
       answer: answerIndex,
       correct: isCorrect,
+      noAnswer: isNoAnswer,
       timestamp: firebase.database.ServerValue.TIMESTAMP
     });
 
@@ -357,13 +379,13 @@ class MultiplayerQuiz {
       console.error('questionStartTime is null or 0, using fallback calculation');
       // Fallback: use local timer duration as approximate time
       const timeElapsed = Math.max(0.1, this.timerDuration - (this.timeRemaining || this.timerDuration));
-      return await this.calculateAndUpdateScore(answerRef, isCorrect, timeElapsed);
+      return await this.calculateAndUpdateScore(answerRef, isCorrect, timeElapsed, isNoAnswer);
     }
 
     // Calculate elapsed time using server timestamps (both from same clock)
     const timeElapsed = Math.max(0.1, (answerTime - questionStartTime) / 1000); // seconds, minimum 0.1s
 
-    return await this.calculateAndUpdateScore(answerRef, isCorrect, timeElapsed);
+    return await this.calculateAndUpdateScore(answerRef, isCorrect, timeElapsed, isNoAnswer);
   }
 
   // Move to next question (host only)
@@ -876,6 +898,7 @@ class MultiplayerUI {
     const hostName = document.getElementById('hostName').value.trim();
     const numQuestions = parseInt(document.getElementById('numQuestions').value);
     const timer = parseInt(document.getElementById('timerSetting').value);
+    const scoringSystem = document.getElementById('scoringSystem').value;
 
     if (!hostName) {
       alert('Inserisci il tuo nome');
@@ -886,7 +909,7 @@ class MultiplayerUI {
       this.game = new MultiplayerQuiz();
       this.game.init();
 
-      const roomCode = await this.game.createRoom(hostName, numQuestions, timer);
+      const roomCode = await this.game.createRoom(hostName, numQuestions, timer, scoringSystem);
 
       // Check if we got fewer questions than requested
       const actualQuestions = this.game.questions.length;
@@ -899,6 +922,11 @@ class MultiplayerUI {
       document.getElementById('lobbyNumQuestions').textContent = actualQuestions;
       document.getElementById('lobbyTimer').textContent = timer;
       document.getElementById('totalQuestions').textContent = actualQuestions;
+      
+      // Display scoring system
+      const scoringSystemText = scoringSystem === 'exam' ? 'Esame (+1/-0.17)' : 'Standard (100+bonus)';
+      document.getElementById('lobbyScoringSystem').textContent = scoringSystemText;
+      
       document.getElementById('startGameBtn').style.display = 'block';
       document.getElementById('waitingMessage').style.display = 'none';
 
@@ -928,6 +956,11 @@ class MultiplayerUI {
       document.getElementById('lobbyNumQuestions').textContent = this.game.numQuestions || this.game.questions.length;
       document.getElementById('lobbyTimer').textContent = this.game.timerDuration;
       document.getElementById('totalQuestions').textContent = this.game.numQuestions || this.game.questions.length;
+      
+      // Display scoring system
+      const scoringSystemText = this.game.scoringSystem === 'exam' ? 'Esame (+1/-0.17)' : 'Standard (100+bonus)';
+      document.getElementById('lobbyScoringSystem').textContent = scoringSystemText;
+      
       document.getElementById('startGameBtn').style.display = 'none';
       document.getElementById('waitingMessage').style.display = 'block';
 

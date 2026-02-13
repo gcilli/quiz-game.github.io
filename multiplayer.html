@@ -10,6 +10,19 @@
 
 <body>
     <div class="container">
+        <div class="header-container">
+            <h1 style="margin: 0; font-size: 1.5rem;">Quiz Multiplayer</h1>
+            <div class="dark-mode-toggle-wrapper">
+                <label style="position: relative; cursor: pointer;">
+                    <input type="checkbox" id="dark-mode-checkbox" class="dark-mode-checkbox">
+                    <div class="toggle-switch">
+                        <span class="toggle-icon sun-icon">☀️</span>
+                        <span class="toggle-icon moon-icon">🌙</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
         <!-- Home Screen -->
         <div id="homeScreen" class="screen active">
             <!-- Dataset Switcher -->
@@ -51,6 +64,15 @@
                     <input id="timerSetting" type="number" min="5" max="300" value="30" required>
                 </label>
 
+                <label>
+                    <p><strong>Sistema di punteggio:</strong></p>
+                    <select id="scoringSystem"
+                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 2px solid var(--border-color); background: var(--container-bg); color: var(--text-color); font-size: 1rem; cursor: pointer;">
+                        <option value="standard">Standard (100 punti base + bonus velocità)</option>
+                        <option value="exam">Esame (+1 corretto, -0.17 errato)</option>
+                    </select>
+                </label>
+
                 <div class="button-group">
                     <button type="submit" class="btn btn-primary">Crea Stanza</button>
                     <button type="button" id="cancelCreateBtn" class="btn btn-tertiary">← Menù principale</button>
@@ -88,6 +110,7 @@
             <div id="lobbySettings" class="lobby-settings">
                 <p><strong>Domande:</strong> <span id="lobbyNumQuestions"></span></p>
                 <p><strong>Tempo:</strong> <span id="lobbyTimer"></span> secondi</p>
+                <p><strong>Punteggio:</strong> <span id="lobbyScoringSystem"></span></p>
             </div>
 
             <h3 style="color: var(--text-color);">Giocatori (<span id="playerCount">0</span>):</h3>
