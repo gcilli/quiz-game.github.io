@@ -494,7 +494,9 @@ function updateQuestionStats(questionId, wasCorrect) {
             timesShown: 0,
             timesCorrect: 0,
             timesWrong: 0,
-            lastShown: 0
+            lastShown: 0,
+            nextReviewDate: 0,
+            interval: 1
         };
     }
 
@@ -505,6 +507,33 @@ function updateQuestionStats(questionId, wasCorrect) {
         stats[questionId].timesWrong++;
     }
     stats[questionId].lastShown = Date.now();
+
+    // Spaced Repetition Scheduling
+    // Optimized for exam prep: 10-day intensive preparation schedule
+    const now = Date.now();
+    const dayInMs = 1000 * 60 * 60 * 24;
+
+    if (stats[questionId].timesShown === 1) {
+        // First time seeing this question: schedule for 12 hours later
+        stats[questionId].interval = 0.5;
+        stats[questionId].nextReviewDate = now + (0.5 * dayInMs);
+    } else {
+        if (wasCorrect) {
+            // Correct answer: increase interval (moderate growth for exam prep)
+            // Multiplier: 1.5x for growing confidence, caps at 4 days max
+            const successRate = stats[questionId].timesCorrect / stats[questionId].timesShown;
+            const multiplier = 1.5; // Consistent 1.5x growth for all confidence levels
+            stats[questionId].interval = Math.round(stats[questionId].interval * multiplier * 10) / 10;
+            // Cap interval at 3 days - suitable for 10-day exam prep
+            stats[questionId].interval = Math.min(stats[questionId].interval, 3);
+        } else {
+            // Wrong answer: reset interval to 2 hours for quick re-review
+            stats[questionId].interval = 2/24; // 2 hours
+        }
+
+        // Calculate next review date based on new interval
+        stats[questionId].nextReviewDate = now + (stats[questionId].interval * dayInMs);
+    }
 
     SafeStorage.set("questionStats", stats);
 
@@ -517,14 +546,42 @@ function calculateQuestionWeight(questionId, cachedStats, cachedSavedQuestions, 
         return 1; // All questions have equal weight
     }
 
-    // Adaptive strategy
     const stats = cachedStats[questionId] || {
         timesShown: 0,
         timesCorrect: 0,
         timesWrong: 0,
-        lastShown: 0
+        lastShown: 0,
+        nextReviewDate: 0,
+        interval: 1
     };
 
+    // Spaced repetition strategy
+    if (strategy === 'spaced-repetition') {
+        // Never seen before gets highest priority
+        if (stats.timesShown === 0) {
+            return 100;
+        }
+
+        // Calculate how many days overdue this question is
+        const now = Date.now();
+        const nextReviewDate = stats.nextReviewDate || stats.lastShown;
+        const daysOverdue = (now - nextReviewDate) / (1000 * 60 * 60 * 24);
+
+        // Weight increases based on how overdue the question is
+        // Questions due for review today get weight 50
+        // Questions overdue by 1 day get weight 100
+        // Questions overdue by 7 days get weight 500
+        let weight = Math.max(10, 50 + (daysOverdue * 50));
+
+        // Boost bookmarked questions
+        if (cachedSavedQuestions.includes(questionId)) {
+            weight *= 1.5;
+        }
+
+        return weight;
+    }
+
+    // Adaptive strategy (original behavior)
     // Never seen before gets highest priority
     if (stats.timesShown === 0) {
         return 100;
